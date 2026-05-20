@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("TA_TEAM")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Vendor {
+  id              String   @id @default(uuid())
+  name            String
+  contact         String?
+  email           String?
+  commissionRate  Float    @default(0.1)
+  performanceScore Float   @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  demands Demand[]
+  hires   Hire[]
+}
+
+model Demand {
+  id            String   @id @default(uuid())
+  title         String
+  jdText        String?
+  requiredSkills String
+  rateMin       Float
+  rateMax       Float
+  location      String?
+  priority      String   @default("MEDIUM")
+  status        String   @default("OPEN")
+  vendorId      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  vendor        Vendor?          @relation(fields: [vendorId], references: [id])
+  matches       JobCandidateMatch[]
+  hires         Hire[]
+
+  @@index([status])
+  @@index([priority])
+}
+
+model Candidate {
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique
+  phone           String?
+  resumeUrl       String?
+  extractedSkills String
+  experienceYears Float    @default(0)
+  currentCtc      Float?
+  expectedCtc     Float?
+  status          String   @default("AVAILABLE")
+  hotTalent       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  resumes Resume[]
+  matches JobCandidateMatch[]
+  hires   Hire[]
+
+  @@index([status])
+  @@index([hotTalent])
+}
+
+model Resume {
+  id             String   @id @default(uuid())
+  candidateId    String
+  originalFile   String
+  parsedText     String?
+  extractedSkills String
+  education      String?
+  experience     String?
+  createdAt      DateTime @default(now())
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+}
+
+model JobCandidateMatch {
+  id           String   @id @default(uuid())
+  demandId     String
+  candidateId  String
+  matchScore   Float
+  matchReason  String?
+  status       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  demand    Demand    @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([demandId, candidateId])
+  @@index([demandId])
+  @@index([candidateId])
+  @@index([matchScore])
+}
+
+model Hire {
+  id               String   @id @default(uuid())
+  demandId         String
+  candidateId      String
+  vendorId         String?
+  hiredRate        Float
+  hiringCost       Float    @default(0)
+  startDate        DateTime
+  projectedMargin12m Float?
+  status           String   @default("ACTIVE")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  demand    Demand    @relation(fields: [demandId], references: [id])
+  candidate Candidate @relation(fields: [candidateId], references: [id])
+  vendor    Vendor?   @relation(fields: [vendorId], references: [id])
+
+  @@index([demandId])
+  @@index([candidateId])
+}
