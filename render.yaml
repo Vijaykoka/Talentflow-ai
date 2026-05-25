@@ -1,6 +1,4 @@
-# Render Blueprint
-# Deploy this service automatically when pushing to main
-
+# Render Blueprint - Simplified for Free Tier
 services:
   - type: web
     name: talentflow-ai
@@ -19,25 +17,4 @@ services:
       - key: NEXTAUTH_SECRET
         sync: false
       - key: NEXTAUTH_URL
-        fromService:
-          type: web
-          name: talentflow-ai
-          envVarKey: RENDER_EXTERNAL_URL
-        transform: "https://{{ .Value | trimPrefix \"https://\" }}"
-      - key: RENDER_EXTERNAL_URL
-        fromService:
-          type: web
-          name: talentflow-ai
-          envVarKey: RENDER_EXTERNAL_URL
-
-# Uncomment below for auto-scaling on Render paid plans
-# autoScaling:
-#   minInstances: 1
-#   maxInstances: 3
-#   targetCPUPercent: 75
-
-# Cron jobs for background tasks (paid feature on Render)
-# crons:
-#   - name: process-matches
-#     schedule: "*/5 * * * *"
-#     command: node src/lib/workflows.ts
+        sync: false
