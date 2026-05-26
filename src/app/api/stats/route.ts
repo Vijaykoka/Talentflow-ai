@@ -141,9 +141,15 @@ export async function GET() {
   }
 }
 
-function parseSkills(skills: string | string[]): string[] {
+function parseSkills(skills: string | string[] | null | undefined): string[] {
+  if (!skills) return [];
   if (Array.isArray(skills)) return skills;
-  try { return JSON.parse(skills); } catch { return []; }
+  try { 
+    const parsed = JSON.parse(skills); 
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { 
+    return []; 
+  }
 }
 
 function computeSkillDistribution(candidates: any[]) {
