@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const rules = getRules();
     return NextResponse.json({ rules });
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch workflows" }, { status: 500 });
   }
 }
@@ -29,7 +29,7 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({ error: "Provide 'id' to toggle or 'reset' to restore defaults" }, { status: 400 });
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ error: "Failed to update workflow" }, { status: 500 });
   }
 }

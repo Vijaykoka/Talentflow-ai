@@ -138,7 +138,8 @@ function ChartTooltipContent({
       labelKey?: string
     } & Omit<
       RechartsPrimitive.DefaultTooltipContentProps<
-        RechartsPrimitive.DefaultTooltipContentPayload<TooltipNameType>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        any,
         TooltipNameType
       >,
       "accessibilityLayer"

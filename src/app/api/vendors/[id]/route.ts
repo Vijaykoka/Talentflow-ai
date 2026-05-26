@@ -29,7 +29,7 @@ export async function PUT(request: Request) {
       data: body,
     });
     return NextResponse.json(vendor);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
 }
@@ -42,7 +42,7 @@ export async function DELETE(request: Request) {
 
     await prisma.vendor.delete({ where: { id } });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }

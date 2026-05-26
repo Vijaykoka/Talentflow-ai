@@ -11,7 +11,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(vendors);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Vendors GET error:", error);
     return NextResponse.json({ error: "Failed to fetch vendors" }, { status: 500 });
   }
@@ -39,9 +39,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(vendor, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Vendors POST error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create vendor" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Failed to create vendor" }, { status: 500 });
   }
 }
 
@@ -51,7 +51,7 @@ export async function PATCH(request: Request) {
     const { id, portalAccess, performanceScore, commissionRate } = body;
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     if (performanceScore !== undefined) updateData.performanceScore = performanceScore;
     if (commissionRate !== undefined) updateData.commissionRate = commissionRate;
 
@@ -72,9 +72,9 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json(vendor);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Vendors PATCH error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update vendor" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Failed to update vendor" }, { status: 500 });
   }
 }
 
@@ -86,8 +86,8 @@ export async function DELETE(request: Request) {
 
     await prisma.vendor.delete({ where: { id } });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Vendors DELETE error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete vendor" }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message || "Failed to delete vendor" }, { status: 500 });
   }
 }

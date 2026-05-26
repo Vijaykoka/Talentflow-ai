@@ -30,7 +30,8 @@ interface WorkflowCondition {
 
 interface WorkflowAction {
   type: "NOTIFY" | "UPDATE_STATUS" | "FLAG_HOT" | "AUTO_ASSIGN" | "LOG";
-  params: Record<string, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  params: Record<string, any>;
 }
 
 // Default workflow rules
@@ -116,10 +117,10 @@ function evaluateCondition(condition: WorkflowCondition, entity: Record<string, 
 
   switch (condition.operator) {
     case "equals": return value === condition.value;
-    case "gt": return value > condition.value;
-    case "lt": return value < condition.value;
-    case "gte": return value >= condition.value;
-    case "lte": return value <= condition.value;
+    case "gt": return (value as number) > (condition.value as number);
+    case "lt": return (value as number) < (condition.value as number);
+    case "gte": return (value as number) >= (condition.value as number);
+    case "lte": return (value as number) <= (condition.value as number);
     case "contains": return String(value).toLowerCase().includes(String(condition.value).toLowerCase());
     case "in": return Array.isArray(condition.value) && condition.value.includes(value);
     default: return false;
@@ -129,7 +130,7 @@ function evaluateCondition(condition: WorkflowCondition, entity: Record<string, 
 /**
  * Execute actions for a matched rule
  */
-function executeActions(rule: WorkflowRule, entity: Record<string, any>): string[] {
+function executeActions(rule: WorkflowRule, entity: Record<string, unknown>): string[] {
   const logs: string[] = [];
 
   for (const action of rule.actions) {
@@ -171,7 +172,7 @@ function executeActions(rule: WorkflowRule, entity: Record<string, any>): string
  */
 export function evaluateRules(
   trigger: WorkflowRule["trigger"],
-  entity: Record<string, any>
+  entity: Record<string, unknown>
 ): { triggered: number; logs: string[] } {
   const matchingRules = rules.filter(r => r.enabled && r.trigger === trigger);
   let triggered = 0;

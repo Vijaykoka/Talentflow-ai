@@ -87,6 +87,7 @@ async function seedFeedback() {
   let seededCount = 0;
   const matchesToSeed = vendorMatches.slice(0, Math.floor(vendorMatches.length * 0.7) || 1);
 
+  const operations = [];
   for (let i = 0; i < matchesToSeed.length; i++) {
     const match = matchesToSeed[i];
     const template = FEEDBACK_TEMPLATES[i % FEEDBACK_TEMPLATES.length];
@@ -98,17 +99,19 @@ async function seedFeedback() {
     const behavioralScore = Math.min(100, Math.max(0, template.behav + randomVar));
     
     // Create the feedback record
-    await prisma.interviewFeedback.create({
-      data: {
-        matchId: match.id,
-        rating: template.rating,
-        interviewer,
-        technicalScore,
-        behavioralScore,
-        comments: `[Initial assessment for ${match.candidate.name}] ${template.comments}`,
-        recommendation: template.rec,
-      },
-    });
+    operations.push(
+      prisma.interviewFeedback.create({
+        data: {
+          matchId: match.id,
+          rating: template.rating,
+          interviewer,
+          technicalScore,
+          behavioralScore,
+          comments: `[Initial assessment for ${match.candidate.name}] ${template.comments}`,
+          recommendation: template.rec,
+        },
+      })
+    );
 
     // Sync match status
     let matchStatus = "PENDING";
@@ -118,10 +121,12 @@ async function seedFeedback() {
       matchStatus = "REJECTED";
     }
 
-    await prisma.jobCandidateMatch.update({
-      where: { id: match.id },
-      data: { status: matchStatus },
-    });
+    operations.push(
+      prisma.jobCandidateMatch.update({
+        where: { id: match.id },
+        data: { status: matchStatus },
+      })
+    );
 
     // Sync candidate status
     let candidateStatus = "INTERVIEWING";
@@ -131,13 +136,18 @@ async function seedFeedback() {
       candidateStatus = "AVAILABLE";
     }
 
-    await prisma.candidate.update({
-      where: { id: match.candidateId },
-      data: { status: candidateStatus },
-    });
+    operations.push(
+      prisma.candidate.update({
+        where: { id: match.candidateId },
+        data: { status: candidateStatus },
+      })
+    );
 
     seededCount++;
   }
+
+  console.log(`Executing database transaction with ${operations.length} operations...`);
+  await prisma.$transaction(operations);
 
   console.log(`\nSuccessfully seeded ${seededCount} mock interview assessments!`);
 }

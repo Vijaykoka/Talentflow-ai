@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Candidate, Demand, Hire, Vendor } from "@prisma/client";
 
 export async function GET() {
   try {
@@ -135,12 +136,13 @@ export async function GET() {
       avgMatchScore: 75 + Math.random() * 10,
       processingTime: 1 + Math.random() * 0.5,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Stats API error:", error);
+    const err = error as Error;
     return NextResponse.json({ 
       error: "Failed to fetch stats", 
-      details: error.message,
-      stack: error.stack
+      details: err.message || String(error),
+      stack: err.stack
     }, { status: 500 });
   }
 }
@@ -156,7 +158,7 @@ function parseSkills(skills: string | string[] | null | undefined): string[] {
   }
 }
 
-function computeSkillDistribution(candidates: any[]) {
+function computeSkillDistribution(candidates: Candidate[]) {
   const skillCounts: Record<string, number> = {};
   const topSkills = ["Python", "React", "Node.js", "TypeScript", "AWS", "Docker", "Kubernetes", "Java", "Go", "Machine Learning"];
 
@@ -173,7 +175,7 @@ function computeSkillDistribution(candidates: any[]) {
   })).sort((a, b) => b.count - a.count);
 }
 
-function computeAvgTimeToFill(filledDemands: any[]) {
+function computeAvgTimeToFill(filledDemands: Demand[]) {
   if (filledDemands.length === 0) return 0;
   const totalDays = filledDemands.reduce((sum, d) => {
     const created = new Date(d.createdAt).getTime();
@@ -183,7 +185,7 @@ function computeAvgTimeToFill(filledDemands: any[]) {
   return Math.round(totalDays / filledDemands.length);
 }
 
-function computeMarginByVendor(vendors: any[], hires: any[]) {
+function computeMarginByVendor(vendors: Vendor[], hires: Hire[]) {
   const vendorMargins: Record<string, number> = {};
   for (const hire of hires) {
     if (hire.vendorId) {
@@ -198,7 +200,7 @@ function computeMarginByVendor(vendors: any[], hires: any[]) {
   })).filter(v => v.margin > 0).sort((a, b) => b.margin - a.margin);
 }
 
-function computeSubmitToHireRates(vendors: any[], demands: any[], hires: any[]) {
+function computeSubmitToHireRates(vendors: Vendor[], demands: Demand[], hires: Hire[]) {
   const vendorHires: Record<string, number> = {};
   const vendorDemands: Record<string, number> = {};
 
@@ -223,7 +225,7 @@ function computeSubmitToHireRates(vendors: any[], demands: any[], hires: any[]) 
   return rates;
 }
 
-function getVendorAvgFillDays(vendorId: string, demands: any[]) {
+function getVendorAvgFillDays(vendorId: string, demands: Demand[]) {
   const vendorDemands = demands.filter(d => d.vendorId === vendorId && d.status === "FILLED");
   if (vendorDemands.length === 0) return 0;
   const totalDays = vendorDemands.reduce((sum, d) => {
