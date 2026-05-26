@@ -30,8 +30,7 @@ interface WorkflowCondition {
 
 interface WorkflowAction {
   type: "NOTIFY" | "UPDATE_STATUS" | "FLAG_HOT" | "AUTO_ASSIGN" | "LOG";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  params: Record<string, any>;
+  params: Record<string, unknown>;
 }
 
 // Default workflow rules
@@ -135,14 +134,18 @@ function executeActions(rule: WorkflowRule, entity: Record<string, unknown>): st
 
   for (const action of rule.actions) {
     switch (action.type) {
-      case "NOTIFY":
-        logNotification({
-          type: "WORKFLOW",
-          title: action.params.title || rule.name,
-          message: `${action.params.message || rule.description} (Rule: ${rule.name})`,
-          metadata: { ruleId: rule.id, entityId: entity.id },
-        });
-        logs.push(`Notification sent: ${action.params.title}`);
+       case "NOTIFY": {
+         const notificationTitle = action.params.title != null ? String(action.params.title) : rule.name;
+         const notificationMessage = `${action.params.message != null ? String(action.params.message) : rule.description} (Rule: ${rule.name})`;
+         logNotification({
+           type: "WORKFLOW",
+           title: notificationTitle,
+           message: notificationMessage,
+           metadata: { ruleId: rule.id, entityId: entity.id },
+         });
+         logs.push(`Notification sent: ${notificationTitle}`);
+         break;
+       }
         break;
 
       case "FLAG_HOT":
