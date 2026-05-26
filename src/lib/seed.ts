@@ -187,61 +187,61 @@ async function seed() {
   );
 
   console.log("Creating 80 demands...");
-  const demands = await Promise.all(
-    Array.from({ length: 80 }, (_, i) => {
-      const title = DEMAND_TITLES[i % DEMAND_TITLES.length];
-      const clusterSkills = SKILL_CLUSTERS[title] || [];
-      const rateMin = title.includes("Senior") || title.includes("Lead") || title.includes("Principal") || title.includes("Architect") || title.includes("Manager") || title.includes("VP") || title.includes("Staff")
-        ? randomBetween(120, 220)
-        : randomBetween(60, 140);
-      const isRemote = Math.random() > 0.55;
-      const priority = randomFrom(["HIGH", "HIGH", "MEDIUM", "MEDIUM", "LOW"]);
-      const statusWeights: string[] = [];
-      if (i < 20) statusWeights.push(...Array(4).fill("OPEN"), "IN_PROGRESS", "INTERVIEW", "FILLED");
-      else if (i < 40) statusWeights.push(...Array(3).fill("OPEN"), ...Array(2).fill("IN_PROGRESS"), "INTERVIEW", "OFFER", "FILLED");
-      else statusWeights.push("OPEN", "IN_PROGRESS", "INTERVIEW", "OFFER", "FILLED", "FILLED");
+  const demands = [];
+  for (let i = 0; i < 80; i++) {
+    const title = DEMAND_TITLES[i % DEMAND_TITLES.length];
+    const clusterSkills = SKILL_CLUSTERS[title] || [];
+    const rateMin = title.includes("Senior") || title.includes("Lead") || title.includes("Principal") || title.includes("Architect") || title.includes("Manager") || title.includes("VP") || title.includes("Staff")
+      ? randomBetween(120, 220)
+      : randomBetween(60, 140);
+    const isRemote = Math.random() > 0.55;
+    const priority = randomFrom(["HIGH", "HIGH", "MEDIUM", "MEDIUM", "LOW"]);
+    const statusWeights: string[] = [];
+    if (i < 20) statusWeights.push(...Array(4).fill("OPEN"), "IN_PROGRESS", "INTERVIEW", "FILLED");
+    else if (i < 40) statusWeights.push(...Array(3).fill("OPEN"), ...Array(2).fill("IN_PROGRESS"), "INTERVIEW", "OFFER", "FILLED");
+    else statusWeights.push("OPEN", "IN_PROGRESS", "INTERVIEW", "OFFER", "FILLED", "FILLED");
 
-      return prisma.demand.create({
-        data: {
-          title: i < 30 ? title : `${title} @ ${randomFrom(COMPANIES)}`,
-          jdText: JD_TEMPLATES[title] || `We are looking for a talented ${title} to join our growing team. You will work on challenging problems with a world-class team.`,
-          requiredSkills: randomSkillsWeighted(4, 9, clusterSkills),
-          rateMin,
-          rateMax: rateMin + randomBetween(20, 80),
-          location: isRemote ? "Remote" : randomFrom(LOCATIONS),
-          priority,
-          status: randomFrom(statusWeights),
-          vendorId: Math.random() > 0.35 ? randomFrom(vendors).id : null,
-        },
-      });
-    })
-  );
+    const demand = await prisma.demand.create({
+      data: {
+        title: i < 30 ? title : `${title} @ ${randomFrom(COMPANIES)}`,
+        jdText: JD_TEMPLATES[title] || `We are looking for a talented ${title} to join our growing team. You will work on challenging problems with a world-class team.`,
+        requiredSkills: randomSkillsWeighted(4, 9, clusterSkills),
+        rateMin,
+        rateMax: rateMin + randomBetween(20, 80),
+        location: isRemote ? "Remote" : randomFrom(LOCATIONS),
+        priority,
+        status: randomFrom(statusWeights),
+        vendorId: Math.random() > 0.35 ? randomFrom(vendors).id : null,
+      },
+    });
+    demands.push(demand);
+  }
 
   console.log("Creating 100 candidates...");
-  const candidates = await Promise.all(
-    Array.from({ length: 100 }, (_, i) => {
-      const firstName = randomFrom(FIRST_NAMES);
-      const lastName = randomFrom(LAST_NAMES);
-      const experience = Math.random() < 0.15 ? randomBetween(15, 25) : Math.random() < 0.3 ? randomBetween(8, 15) : randomBetween(1, 8);
-      const isHot = experience >= 10 && Math.random() > 0.4;
-      const isHotRare = experience >= 5 && Math.random() > 0.85;
-      const statusWeights = ["AVAILABLE", "AVAILABLE", "AVAILABLE", "AVAILABLE", "INTERVIEWING", "INTERVIEWING", "OFFERED"];
+  const candidates = [];
+  for (let i = 0; i < 100; i++) {
+    const firstName = randomFrom(FIRST_NAMES);
+    const lastName = randomFrom(LAST_NAMES);
+    const experience = Math.random() < 0.15 ? randomBetween(15, 25) : Math.random() < 0.3 ? randomBetween(8, 15) : randomBetween(1, 8);
+    const isHot = experience >= 10 && Math.random() > 0.4;
+    const isHotRare = experience >= 5 && Math.random() > 0.85;
+    const statusWeights = ["AVAILABLE", "AVAILABLE", "AVAILABLE", "AVAILABLE", "INTERVIEWING", "INTERVIEWING", "OFFERED"];
 
-      return prisma.candidate.create({
-        data: {
-          name: `${firstName} ${lastName}`,
-          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@email.com`,
-          phone: `+1-${randomBetween(200, 999)}-${randomBetween(100, 999)}-${randomBetween(1000, 9999)}`,
-          extractedSkills: randomSkills(randomBetween(4, 12)),
-          experienceYears: experience,
-          currentCtc: experience * randomBetween(8000, 18000),
-          expectedCtc: experience * randomBetween(9000, 22000),
-          status: randomFrom(statusWeights),
-          hotTalent: isHot || isHotRare,
-        },
-      });
-    })
-  );
+    const candidate = await prisma.candidate.create({
+      data: {
+        name: `${firstName} ${lastName}`,
+        email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@email.com`,
+        phone: `+1-${randomBetween(200, 999)}-${randomBetween(100, 999)}-${randomBetween(1000, 9999)}`,
+        extractedSkills: randomSkills(randomBetween(4, 12)),
+        experienceYears: experience,
+        currentCtc: experience * randomBetween(8000, 18000),
+        expectedCtc: experience * randomBetween(9000, 22000),
+        status: randomFrom(statusWeights),
+        hotTalent: isHot || isHotRare,
+      },
+    });
+    candidates.push(candidate);
+  }
 
   console.log("Creating resumes for candidates...");
   let resumeCount = 0;

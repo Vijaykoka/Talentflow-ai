@@ -130,7 +130,15 @@ export default function DemandsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Priority</Label>
-                  <Select value={formData.priority} onValueChange={v => setFormData({...formData, priority: v!})}>
+                  <Select 
+                    value={formData.priority} 
+                    onValueChange={v => setFormData({...formData, priority: v!})}
+                    items={[
+                      { label: "High", value: "HIGH" },
+                      { label: "Medium", value: "MEDIUM" },
+                      { label: "Low", value: "LOW" },
+                    ]}
+                  >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="HIGH">High</SelectItem>
@@ -142,7 +150,11 @@ export default function DemandsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Vendor (Optional)</Label>
-                <Select value={formData.vendorId} onValueChange={v => setFormData({...formData, vendorId: v ?? ""})}>
+                <Select 
+                  value={formData.vendorId} 
+                  onValueChange={v => setFormData({...formData, vendorId: v ?? ""})}
+                  items={vendors.map(v => ({ label: v.name, value: v.id }))}
+                >
                   <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
                   <SelectContent>
                     {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
@@ -187,7 +199,17 @@ export default function DemandsPage() {
                     <span className={PRIORITY_COLORS[demand.priority]}>{demand.priority}</span>
                   </td>
                   <td style={{ padding: "8px" }}>
-                    <Select defaultValue={demand.status} onValueChange={v => handleStatusChange(demand.id, v)}>
+                    <Select 
+                      defaultValue={demand.status} 
+                      onValueChange={v => handleStatusChange(demand.id, v)}
+                      items={[
+                        { label: "Open", value: "OPEN" },
+                        { label: "In Progress", value: "IN_PROGRESS" },
+                        { label: "Interview", value: "INTERVIEW" },
+                        { label: "Offer", value: "OFFER" },
+                        { label: "Filled", value: "FILLED" },
+                      ]}
+                    >
                       <SelectTrigger className="w-[110px] h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="OPEN">Open</SelectItem>

@@ -35,6 +35,8 @@ import PipelineTab from "./PipelineTab";
 import SkillGapTab from "./SkillGapTab";
 import ActivityTab from "./ActivityTab";
 import CreateDemandTab from "./CreateDemandTab";
+import InterviewFeedbackTab from "./InterviewFeedbackTab";
+
 
 interface Stats {
   totalDemands: number;
@@ -110,6 +112,7 @@ export default function DashboardPage() {
       {activeTab === "skillgap" && <SkillGapTab />}
       {activeTab === "activity" && <ActivityTab />}
       {activeTab === "createDemand" && <CreateDemandTab />}
+      {activeTab === "feedback" && <InterviewFeedbackTab />}
     </>
   );
 }

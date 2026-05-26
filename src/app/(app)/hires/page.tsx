@@ -89,21 +89,33 @@ export default function HiresPage() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Demand (Job)</Label>
-                <Select value={formData.demandId} onValueChange={v => setFormData({...formData, demandId: v!})}>
+                <Select 
+                  value={formData.demandId} 
+                  onValueChange={v => setFormData({...formData, demandId: v!})}
+                  items={demands.filter(d => d.status !== "FILLED").map(d => ({ label: d.title, value: d.id }))}
+                >
                   <SelectTrigger><SelectValue placeholder="Select demand" /></SelectTrigger>
                   <SelectContent>{demands.filter(d => d.status !== "FILLED").map(d => (<SelectItem key={d.id} value={d.id}>{d.title}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Candidate</Label>
-                <Select value={formData.candidateId} onValueChange={v => setFormData({...formData, candidateId: v!})}>
+                <Select 
+                  value={formData.candidateId} 
+                  onValueChange={v => setFormData({...formData, candidateId: v!})}
+                  items={candidates.filter(c => c.status !== "HIRED").map(c => ({ label: c.name, value: c.id }))}
+                >
                   <SelectTrigger><SelectValue placeholder="Select candidate" /></SelectTrigger>
                   <SelectContent>{candidates.filter(c => c.status !== "HIRED").map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Vendor (Optional)</Label>
-                <Select value={formData.vendorId} onValueChange={v => setFormData({...formData, vendorId: v ?? ""})}>
+                <Select 
+                  value={formData.vendorId} 
+                  onValueChange={v => setFormData({...formData, vendorId: v ?? ""})}
+                  items={vendors.map(v => ({ label: v.name, value: v.id }))}
+                >
                   <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
                   <SelectContent>{vendors.map(v => (<SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>))}</SelectContent>
                 </Select>

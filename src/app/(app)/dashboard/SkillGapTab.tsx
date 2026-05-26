@@ -66,7 +66,11 @@ export default function SkillGapTab() {
           <div className="card-title-wireframe" style={{ marginBottom: "10px" }}>
             <IconSearch size={15} /> Select Demand (Job)
           </div>
-          <Select value={selectedDemand} onValueChange={setSelectedDemand}>
+          <Select 
+            value={selectedDemand} 
+            onValueChange={setSelectedDemand}
+            items={demands.map(d => ({ label: d.title, value: d.id }))}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Choose a demand..." />
             </SelectTrigger>
@@ -86,12 +90,16 @@ export default function SkillGapTab() {
             </div>
           )}
         </div>
-
+ 
         <div className="card-wireframe">
           <div className="card-title-wireframe" style={{ marginBottom: "10px" }}>
             <IconSearch size={15} /> Select Candidate
           </div>
-          <Select value={selectedCandidate} onValueChange={setSelectedCandidate}>
+          <Select 
+            value={selectedCandidate} 
+            onValueChange={setSelectedCandidate}
+            items={candidates.map(c => ({ label: `${c.name} (${c.experienceYears}y exp)`, value: c.id }))}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Choose a candidate..." />
             </SelectTrigger>

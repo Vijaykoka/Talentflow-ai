@@ -68,7 +68,22 @@ export interface JobCandidateMatch {
   status: MatchStatus;
   createdAt: Date;
   updatedAt: Date;
+  feedback?: InterviewFeedback | null;
 }
+
+export interface InterviewFeedback {
+  id: string;
+  matchId: string;
+  rating: number;
+  interviewer: string;
+  technicalScore: number;
+  behavioralScore: number;
+  comments: string;
+  recommendation: "STRONG_HIRE" | "HIRE" | "NO_HIRE" | "STRONG_NO_HIRE";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 
 export interface Vendor {
   id: string;

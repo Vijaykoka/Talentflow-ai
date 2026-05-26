@@ -104,12 +104,29 @@ model JobCandidateMatch {
 
   demand    Demand    @relation(fields: [demandId], references: [id], onDelete: Cascade)
   candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  feedback  InterviewFeedback?
 
   @@unique([demandId, candidateId])
   @@index([demandId])
   @@index([candidateId])
   @@index([matchScore])
 }
+
+model InterviewFeedback {
+  id              String   @id @default(uuid())
+  matchId         String   @unique
+  rating          Int      // 1 to 5 stars
+  interviewer     String   // Name of interviewer
+  technicalScore  Int      // 0 to 100
+  behavioralScore Int      // 0 to 100
+  comments        String
+  recommendation  String   // "STRONG_HIRE" | "HIRE" | "NO_HIRE" | "STRONG_NO_HIRE"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  match           JobCandidateMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+}
+
 
 model Hire {
   id               String   @id @default(uuid())

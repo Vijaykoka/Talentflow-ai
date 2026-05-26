@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode } from "react";
-export type TabId = "demand" | "supply" | "matching" | "margin" | "vendor" | "projects" | "pipeline" | "skillgap" | "activity" | "createDemand";
+export type TabId = "demand" | "supply" | "matching" | "margin" | "vendor" | "projects" | "pipeline" | "skillgap" | "activity" | "createDemand" | "feedback";
 
 interface TabContextValue {
   activeTab: TabId;

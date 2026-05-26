@@ -237,7 +237,15 @@ export default function CreateDemandTab() {
               </div>
               <div className="form-group">
                 <Label htmlFor="priority">Priority</Label>
-                <Select value={formData.priority} onValueChange={v => setFormData({ ...formData, priority: v! })}>
+                <Select 
+                  value={formData.priority} 
+                  onValueChange={v => setFormData({ ...formData, priority: v! })}
+                  items={[
+                    { label: "High Priority", value: "HIGH" },
+                    { label: "Medium Priority", value: "MEDIUM" },
+                    { label: "Low Priority", value: "LOW" },
+                  ]}
+                >
                   <SelectTrigger id="priority">
                     <SelectValue />
                   </SelectTrigger>
@@ -259,7 +267,14 @@ export default function CreateDemandTab() {
 
             <div className="form-group">
               <Label htmlFor="vendor">Associated Recruiting Partner (Optional)</Label>
-              <Select value={formData.vendorId} onValueChange={v => setFormData({ ...formData, vendorId: v === "internal" || !v ? "" : v })}>
+              <Select 
+                value={formData.vendorId} 
+                onValueChange={v => setFormData({ ...formData, vendorId: v === "internal" || !v ? "" : v })}
+                items={[
+                  { label: "Internal Requisition (No Vendor Partner)", value: "internal" },
+                  ...vendors.map(v => ({ label: v.name, value: v.id }))
+                ]}
+              >
                 <SelectTrigger id="vendor">
                   <SelectValue placeholder="Internal Requisition (No Vendor Partner)" />
                 </SelectTrigger>
