@@ -69,10 +69,11 @@ export default function SkillGapTab() {
           <Select 
             value={selectedDemand} 
             onValueChange={setSelectedDemand}
-            items={demands.map(d => ({ label: d.title, value: d.id }))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Choose a demand..." />
+              <SelectValue placeholder="Choose a demand...">
+                {selectedDemand ? (demand?.title ?? "Choose a demand...") : undefined}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {demands.map(d => (
@@ -98,10 +99,11 @@ export default function SkillGapTab() {
           <Select 
             value={selectedCandidate} 
             onValueChange={setSelectedCandidate}
-            items={candidates.map(c => ({ label: `${c.name} (${c.experienceYears}y exp)`, value: c.id }))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Choose a candidate..." />
+              <SelectValue placeholder="Choose a candidate...">
+                {selectedCandidate ? (candidate ? `${candidate.name} (${candidate.experienceYears}y exp)` : "Choose a candidate...") : undefined}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {candidates.map(c => (

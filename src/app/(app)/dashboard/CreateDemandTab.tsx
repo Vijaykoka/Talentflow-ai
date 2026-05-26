@@ -240,14 +240,11 @@ export default function CreateDemandTab() {
                 <Select 
                   value={formData.priority} 
                   onValueChange={v => setFormData({ ...formData, priority: v! })}
-                  items={[
-                    { label: "High Priority", value: "HIGH" },
-                    { label: "Medium Priority", value: "MEDIUM" },
-                    { label: "Low Priority", value: "LOW" },
-                  ]}
                 >
                   <SelectTrigger id="priority">
-                    <SelectValue />
+                    <SelectValue>
+                      {{ HIGH: "High Priority", MEDIUM: "Medium Priority", LOW: "Low Priority" }[formData.priority] ?? "Select priority"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="HIGH">High Priority</SelectItem>
@@ -268,15 +265,13 @@ export default function CreateDemandTab() {
             <div className="form-group">
               <Label htmlFor="vendor">Associated Recruiting Partner (Optional)</Label>
               <Select 
-                value={formData.vendorId} 
+                value={formData.vendorId || "internal"} 
                 onValueChange={v => setFormData({ ...formData, vendorId: v === "internal" || !v ? "" : v })}
-                items={[
-                  { label: "Internal Requisition (No Vendor Partner)", value: "internal" },
-                  ...vendors.map(v => ({ label: v.name, value: v.id }))
-                ]}
               >
                 <SelectTrigger id="vendor">
-                  <SelectValue placeholder="Internal Requisition (No Vendor Partner)" />
+                  <SelectValue placeholder="Internal Requisition (No Vendor Partner)">
+                    {formData.vendorId ? vendors.find(vendor => vendor.id === formData.vendorId)?.name ?? "Internal Requisition (No Vendor Partner)" : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="internal">Internal Requisition (No Vendor Partner)</SelectItem>

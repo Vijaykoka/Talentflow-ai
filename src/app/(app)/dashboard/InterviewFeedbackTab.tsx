@@ -278,10 +278,11 @@ export default function InterviewFeedbackTab() {
             <Select 
               value={selectedVendor} 
               onValueChange={(val) => setSelectedVendor(val || "ALL")}
-              items={["ALL", ...vendors].map(v => ({ label: v === "ALL" ? "All Vendors" : v, value: v }))}
             >
               <SelectTrigger style={{ height: "30px", width: "140px", fontSize: "11px", borderRadius: "6px" }}>
-                <SelectValue placeholder="Vendor" />
+                <SelectValue placeholder="Vendor">
+                  {selectedVendor === "ALL" ? "All Vendors" : selectedVendor}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Vendors</SelectItem>
@@ -295,17 +296,11 @@ export default function InterviewFeedbackTab() {
             <Select 
               value={selectedStatus} 
               onValueChange={(val) => setSelectedStatus(val || "ALL")}
-              items={[
-                { label: "All Outcomes", value: "ALL" },
-                { label: "Pending Interview", value: "PENDING" },
-                { label: "Strong Hire", value: "STRONG_HIRE" },
-                { label: "Hire", value: "HIRE" },
-                { label: "No Hire", value: "NO_HIRE" },
-                { label: "Strong No Hire", value: "STRONG_NO_HIRE" },
-              ]}
             >
               <SelectTrigger style={{ height: "30px", width: "140px", fontSize: "11px", borderRadius: "6px" }}>
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="Status">
+                  {{ ALL: "All Outcomes", PENDING: "Pending Interview", STRONG_HIRE: "Strong Hire", HIRE: "Hire", NO_HIRE: "No Hire", STRONG_NO_HIRE: "Strong No Hire" }[selectedStatus]}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Outcomes</SelectItem>
@@ -338,13 +333,11 @@ export default function InterviewFeedbackTab() {
                     <Select 
                       value={selectedMatchId} 
                       onValueChange={(val) => setSelectedMatchId(val || "")}
-                      items={pendingCandidates.map((m) => ({
-                        label: `${m.candidate?.name} — ${m.demand?.title} (via ${m.demand?.vendor?.name || "Internal"})`,
-                        value: m.id,
-                      }))}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select candidate from queue..." />
+                        <SelectValue placeholder="Select candidate from queue...">
+                          {selectedMatchId ? (() => { const match = pendingCandidates.find(m => m.id === selectedMatchId); return match ? `${match.candidate?.name} — ${match.demand?.title} (via ${match.demand?.vendor?.name || "Internal"})` : undefined; })() : undefined}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {pendingCandidates.map((m) => (
@@ -374,15 +367,11 @@ export default function InterviewFeedbackTab() {
                       <Select 
                         value={recommendation} 
                         onValueChange={(val) => setRecommendation(val || "HIRE")}
-                        items={[
-                          { label: "⭐ Strong Hire", value: "STRONG_HIRE" },
-                          { label: "✔ Hire", value: "HIRE" },
-                          { label: "✖ No Hire", value: "NO_HIRE" },
-                          { label: "🚫 Strong No Hire", value: "STRONG_NO_HIRE" },
-                        ]}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue />
+                          <SelectValue>
+                            {{ STRONG_HIRE: "⭐ Strong Hire", HIRE: "✔ Hire", NO_HIRE: "✖ No Hire", STRONG_NO_HIRE: "🚫 Strong No Hire" }[recommendation] ?? "Select recommendation"}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="STRONG_HIRE">⭐ Strong Hire</SelectItem>
