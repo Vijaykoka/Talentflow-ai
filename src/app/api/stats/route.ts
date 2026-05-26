@@ -135,9 +135,13 @@ export async function GET() {
       avgMatchScore: 75 + Math.random() * 10,
       processingTime: 1 + Math.random() * 0.5,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Stats API error:", error);
-    return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Failed to fetch stats", 
+      details: error.message,
+      stack: error.stack
+    }, { status: 500 });
   }
 }
 
