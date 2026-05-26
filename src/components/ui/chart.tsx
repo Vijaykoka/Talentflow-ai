@@ -125,24 +125,24 @@ function ChartTooltipContent({
   label,
   labelFormatter,
   labelClassName,
-  formatter,
-  color,
-  nameKey,
-  labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-  React.ComponentProps<"div"> & {
-    hideLabel?: boolean
-    hideIndicator?: boolean
-    indicator?: "line" | "dot" | "dashed"
-    nameKey?: string
-    labelKey?: string
-  } & Omit<
-    RechartsPrimitive.DefaultTooltipContentProps<
-      any,
-      TooltipNameType
-    >,
-    "accessibilityLayer"
-  >) {
+    formatter,
+    color,
+    nameKey,
+    labelKey,
+  }: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+    React.ComponentProps<"div"> & {
+      hideLabel?: boolean
+      hideIndicator?: boolean
+      indicator?: "line" | "dot" | "dashed"
+      nameKey?: string
+      labelKey?: string
+    } & Omit<
+      RechartsPrimitive.DefaultTooltipContentProps<
+        RechartsPrimitive.DefaultTooltipContentPayload<TooltipNameType>,
+        TooltipNameType
+      >,
+      "accessibilityLayer"
+    >) {
   const { config } = useChart()
 
   const tooltipLabel = React.useMemo(() => {

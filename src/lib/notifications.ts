@@ -14,7 +14,7 @@ export interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   emailSent?: boolean;
 }
 
@@ -30,7 +30,7 @@ export function logNotification(params: {
   type: Notification["type"];
   title: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   emailTo?: string;
 }): Notification {
   const notification: Notification = {

@@ -169,22 +169,20 @@ async function seed() {
   await prisma.demand.deleteMany();
   await prisma.vendor.deleteMany();
 
-  console.log("Creating vendors...");
-  const vendors = await Promise.all(
-    VENDOR_NAMES.map((name, i) => {
-      const hiresCount = randomBetween(3, 25);
-      const avgFillDays = randomBetween(5, 35);
-      return prisma.vendor.create({
-        data: {
-          name,
-          contact: `${randomFrom(FIRST_NAMES)} ${randomFrom(LAST_NAMES)}`,
-          email: `info@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
-          commissionRate: randomFloat(0.05, 0.18),
-          performanceScore: randomFloat(3.0, 5.0),
-        },
-      });
-    })
-  );
+   console.log("Creating vendors...");
+   const vendors = await Promise.all(
+     VENDOR_NAMES.map((name) => {
+       return prisma.vendor.create({
+         data: {
+           name,
+           contact: `${randomFrom(FIRST_NAMES)} ${randomFrom(LAST_NAMES)}`,
+           email: `info@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+           commissionRate: randomFloat(0.05, 0.18),
+           performanceScore: randomFloat(3.0, 5.0),
+         },
+       });
+     })
+   );
 
   console.log("Creating 80 demands...");
   const demands = [];

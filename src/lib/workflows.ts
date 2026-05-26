@@ -25,12 +25,12 @@ export interface WorkflowRule {
 interface WorkflowCondition {
   field: string;
   operator: "equals" | "gt" | "lt" | "gte" | "lte" | "contains" | "in";
-  value: any;
+  value: unknown;
 }
 
 interface WorkflowAction {
   type: "NOTIFY" | "UPDATE_STATUS" | "FLAG_HOT" | "AUTO_ASSIGN" | "LOG";
-  params: Record<string, any>;
+  params: Record<string, unknown>;
 }
 
 // Default workflow rules
@@ -110,7 +110,7 @@ let rules: WorkflowRule[] = [...defaultRules];
 /**
  * Evaluate a single condition against an entity
  */
-function evaluateCondition(condition: WorkflowCondition, entity: Record<string, any>): boolean {
+function evaluateCondition(condition: WorkflowCondition, entity: Record<string, unknown>): boolean {
   const value = entity[condition.field];
   if (value === undefined) return false;
 
