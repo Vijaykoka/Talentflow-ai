@@ -1383,10 +1383,27 @@ function VendorTab() {
     ? Math.round(stats.allVendors.reduce((sum, v) => sum + v.submitToHireRate, 0) / stats.allVendors.length)
     : 0;
 
-  const totalCommissionPaid = stats.allHires.reduce((sum, h) => {
-    const vendor = stats.allVendors.find((v: any) => v.name === h.vendorName);
-    return sum + (vendor ? h.hiredRate * 160 * vendor.commissionRate * 12 : 0);
-  }, 0);
+  // Commission Paid: actual commission accrued based on months worked since startDate
+  const vendorCommissionData = stats.allVendors.map((v: any) => {
+    const vendorHires = stats.allHires.filter((h: any) => h.vendorName === v.name && h.vendorName !== "Bench (Internal)");
+    let paid = 0;
+    let pendingThisMonth = 0;
+    for (const h of vendorHires) {
+      const start = new Date(h.startDate);
+      const now = new Date();
+      const monthsWorked = Math.max(1, Math.round((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+      const monthlyComm = h.hiredRate * 160 * v.commissionRate;
+      const completedMonths = h.status === "COMPLETED" ? monthsWorked : Math.max(0, monthsWorked - 1);
+      paid += monthlyComm * completedMonths;
+      if (h.status === "ACTIVE") {
+        pendingThisMonth += monthlyComm;
+      }
+    }
+    return { ...v, commissionPaid: paid, pendingPayout: pendingThisMonth, vendorHireCount: vendorHires.length };
+  });
+
+  const totalCommissionPaid = vendorCommissionData.reduce((sum: number, v: any) => sum + v.commissionPaid, 0);
+  const totalPendingPayouts = vendorCommissionData.reduce((sum: number, v: any) => sum + v.pendingPayout, 0);
 
   const handleKpiClick = (type: "active" | "submit" | "commission" | "pending") => {
     setDialogType(type);
@@ -1509,7 +1526,7 @@ function VendorTab() {
           <IconCalculator className="premium-kpi-icon" size={44} />
           <div className="kpi-label">Commission Paid</div>
           <div className="kpi-val" style={{ color: "var(--color-success-dark)" }}>{fmt(totalCommissionPaid)}</div>
-          <div className="kpi-delta up" style={{ fontSize: "11px" }}>cumulative agency fees</div>
+          <div className="kpi-delta up" style={{ fontSize: "11px" }}>accrued vendor fees to date</div>
           <div style={{ height: "4px", width: "100%", background: "var(--color-green-light)", borderRadius: "2px", marginTop: "8px", overflow: "hidden" }}>
             <div style={{ height: "100%", width: "70%", background: "var(--color-success)" }} />
           </div>
@@ -1522,8 +1539,8 @@ function VendorTab() {
         >
           <IconClock className="premium-kpi-icon" size={44} />
           <div className="kpi-label">Pending Payouts</div>
-          <div className="kpi-val" style={{ color: "var(--color-warning-dark)" }}>{fmt(totalCommissionPaid * 0.15)}</div>
-          <div className="kpi-delta down" style={{ fontSize: "11px" }}>accruing net 30 invoices</div>
+          <div className="kpi-val" style={{ color: "var(--color-warning-dark)" }}>{fmt(totalPendingPayouts)}</div>
+          <div className="kpi-delta down" style={{ fontSize: "11px" }}>current month uninvoiced</div>
           <div style={{ height: "4px", width: "100%", background: "var(--color-amber-light)", borderRadius: "2px", marginTop: "8px", overflow: "hidden" }}>
             <div style={{ height: "100%", width: "45%", background: "var(--color-warning)" }} />
           </div>
@@ -1631,6 +1648,7 @@ function VendorTab() {
                 <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No vendors found.</div>
               ) : (
                 displayList.map((vendor: any) => {
+                  const commData = vendorCommissionData.find((vc: any) => vc.id === vendor.id);
                   const comm = vendor.commissionRate * 100;
                   return (
                     <div key={vendor.id} className="popup-row">
@@ -1642,7 +1660,7 @@ function VendorTab() {
                         <div className="popup-sub">
                           <IconBuildingStore size={12} /> {vendor.contact || "No Contact info"}
                           <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
-                          {vendor.email || "No email"}
+                          {comm.toFixed(0)}% rate • {commData?.vendorHireCount || 0} hires
                         </div>
                       </div>
                       <div className="popup-stat">
@@ -1651,10 +1669,15 @@ function VendorTab() {
                             <span className="popup-stat-val">{vendor.submitToHireRate}%</span>
                             <span className="popup-stat-label">Submit-to-Hire</span>
                           </>
-                        ) : dialogType === "commission" || dialogType === "pending" ? (
+                        ) : dialogType === "commission" ? (
                           <>
-                            <span className="popup-stat-val">{comm.toFixed(1)}%</span>
-                            <span className="popup-stat-label">Rate</span>
+                            <span className="popup-stat-val" style={{ color: "var(--color-success-dark)" }}>{fmt(commData?.commissionPaid || 0)}</span>
+                            <span className="popup-stat-label">Paid to Date</span>
+                          </>
+                        ) : dialogType === "pending" ? (
+                          <>
+                            <span className="popup-stat-val" style={{ color: commData?.pendingPayout > 0 ? "var(--color-warning-dark)" : "var(--color-text-tertiary)" }}>{fmt(commData?.pendingPayout || 0)}</span>
+                            <span className="popup-stat-label">This Month</span>
                           </>
                         ) : (
                           <>
