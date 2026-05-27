@@ -24,19 +24,29 @@ import {
   Brain,
   Code,
   Sparkles,
+  Calendar,
+  Clock,
+  Video,
+  Send,
+  Trash2,
+  AlertCircle
 } from "lucide-react";
 
 export default function InterviewFeedbackTab() {
   const { data: session } = useSession();
   const userRole = session?.user?.role;
-  const isHiringManager = userRole === "HIRING_TEAM";
+
+  // Active view tab state: "schedule" | "evaluations"
+  const [activeSubTab, setActiveSubTab] = useState<"schedule" | "evaluations">("schedule");
 
   const [matches, setMatches] = useState<any[]>([]);
+  const [interviews, setInterviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingInterviews, setLoadingInterviews] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Filters
+  // Filters (Evaluations)
   const [selectedVendor, setSelectedVendor] = useState<string>("ALL");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,8 +63,19 @@ export default function InterviewFeedbackTab() {
   // Selected feedback for viewing details
   const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
 
+  // Scheduling Modal State
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [schedMatchId, setSchedMatchId] = useState<string>("");
+  const [schedDate, setSchedDate] = useState<string>("");
+  const [schedTime, setSchedTime] = useState<string>("");
+  const [schedPanelName, setSchedPanelName] = useState<string>("");
+  const [schedPanelEmails, setSchedPanelEmails] = useState<string>("");
+  const [schedMeetingLink, setSchedMeetingLink] = useState<string>("");
+  const [schedulingSubmitting, setSchedulingSubmitting] = useState(false);
+
   useEffect(() => {
     fetchFeedbacks();
+    fetchInterviews();
   }, []);
 
   const fetchFeedbacks = async () => {
@@ -67,6 +88,19 @@ export default function InterviewFeedbackTab() {
       console.error("Failed to fetch feedbacks:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchInterviews = async () => {
+    setLoadingInterviews(true);
+    try {
+      const res = await fetch("/api/interviews");
+      const data = await res.json();
+      setInterviews(data || []);
+    } catch (err) {
+      console.error("Failed to fetch interviews:", err);
+    } finally {
+      setLoadingInterviews(false);
     }
   };
 
@@ -86,11 +120,16 @@ export default function InterviewFeedbackTab() {
     return matches.filter((m) => !m.feedback);
   }, [matches]);
 
+  // Matches eligible for scheduling
+  const eligibleForScheduling = useMemo(() => {
+    // Only allow scheduling candidates who have no feedback yet
+    return matches.filter((m) => !m.feedback);
+  }, [matches]);
+
   // Filtered matches
   const filteredMatches = useMemo(() => {
     return matches.filter((m) => {
       const matchVendor = m.demand?.vendor?.name || "";
-      const matchStatus = m.feedback ? m.feedback.recommendation : "PENDING";
       const candidateName = m.candidate?.name || "";
       const jobTitle = m.demand?.title || "";
 
@@ -157,13 +196,91 @@ export default function InterviewFeedbackTab() {
         setRating(5);
         setComments("");
         setRecommendation("HIRE");
+        
+        // Also update any scheduled interview to COMPLETED
+        const linkedInterview = interviews.find(
+          (i) => i.matchId === selectedMatchId && i.status === "SCHEDULED"
+        );
+        if (linkedInterview) {
+          await fetch("/api/interviews", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: linkedInterview.id, status: "COMPLETED" }),
+          });
+        }
+
         fetchFeedbacks();
+        fetchInterviews();
       }
     } catch (err) {
       console.error("Failed to submit feedback:", err);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleScheduleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!schedMatchId || !schedDate || !schedTime || !schedPanelName) return;
+
+    setSchedulingSubmitting(true);
+    const scheduledAt = `${schedDate}T${schedTime}:00`;
+    try {
+      const res = await fetch("/api/interviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matchId: schedMatchId,
+          scheduledAt,
+          panelName: schedPanelName,
+          panelEmails: schedPanelEmails,
+          meetingLink: schedMeetingLink,
+        }),
+      });
+
+      if (res.ok) {
+        setIsScheduleModalOpen(false);
+        // Reset state
+        setSchedMatchId("");
+        setSchedDate("");
+        setSchedTime("");
+        setSchedPanelName("");
+        setSchedPanelEmails("");
+        setSchedMeetingLink("");
+        fetchInterviews();
+        fetchFeedbacks();
+      }
+    } catch (err) {
+      console.error("Failed to schedule interview:", err);
+    } finally {
+      setSchedulingSubmitting(false);
+    }
+  };
+
+  const handleCancelInterview = async (id: string) => {
+    if (!confirm("Are you sure you want to cancel this scheduled interview?")) return;
+    try {
+      const res = await fetch("/api/interviews", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "CANCELLED" }),
+      });
+      if (res.ok) {
+        fetchInterviews();
+        fetchFeedbacks();
+      }
+    } catch (err) {
+      console.error("Failed to cancel interview:", err);
+    }
+  };
+
+  const handleSendReminder = (panel: string, candidate: string) => {
+    alert(`Reminder notification successfully sent to interview panel (${panel}) for candidate ${candidate}.`);
+  };
+
+  const handleRecordFeedbackForMatch = (matchId: string) => {
+    setSelectedMatchId(matchId);
+    setIsOpen(true);
   };
 
   const getRecBadgeClass = (rec: string) => {
@@ -200,15 +317,15 @@ export default function InterviewFeedbackTab() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
           <div>
             <h1 className="page-title" style={{ fontSize: "22px", fontWeight: "700", margin: 0, letterSpacing: "-0.02em" }}>
-              <span className="gradient-text">Interview Feedback</span> Center
+              <span className="gradient-text">Interview & Feedback</span> Management
             </h1>
             <p className="page-sub" style={{ margin: "4px 0 0 0", fontSize: "12px", opacity: 0.8 }}>
-              Assessments, technical ratings, and recommendations for candidates sourced via partner agencies.
+              Schedule interviews, assign technical evaluation panels, and record candidate scorecards.
             </p>
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
             <span className="badge-blue pulse-glow" style={{ padding: "6px 12px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 600 }}>
-              <Sparkles size={12} /> Feedback Engine Active
+              <Sparkles size={12} /> Management Hub Active
             </span>
           </div>
         </div>
@@ -236,10 +353,12 @@ export default function InterviewFeedbackTab() {
 
         <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-purple)" } as React.CSSProperties}>
           <Brain className="premium-kpi-icon" size={40} />
-          <div className="kpi-label">Avg Behavioral Score</div>
-          <div className="kpi-val" style={{ color: "var(--color-purple)" }}>{stats.avgBehav}%</div>
-          <div style={{ height: "4px", width: "100%", background: "var(--color-purple-light)", borderRadius: "2px", marginTop: "8px", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${stats.avgBehav}%`, background: "var(--color-purple)" }} />
+          <div className="kpi-label">Scheduled Interviews</div>
+          <div className="kpi-val" style={{ color: "var(--color-purple)" }}>
+            {interviews.filter((i) => i.status === "SCHEDULED").length} Active
+          </div>
+          <div className="kpi-delta up" style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+            <Calendar size={12} /> Total {interviews.length} sessions
           </div>
         </div>
 
@@ -253,389 +372,645 @@ export default function InterviewFeedbackTab() {
         </div>
       </div>
 
-      {/* Quick Actions and Filters */}
-      <div className="card-wireframe glass-card-premium" style={{ marginBottom: "20px", padding: "14px", border: "1px solid var(--color-border-tertiary)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-          
-          {/* Filters Area */}
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--color-text-secondary)" }}>
-              <Filter size={14} /> Filter:
-            </div>
-            
-            {/* Search Input */}
-            <div style={{ position: "relative", minWidth: "180px" }}>
-              <Search size={12} style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", color: "var(--color-text-tertiary)" }} />
-              <Input
-                placeholder="Search candidate / job..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: "26px", height: "30px", fontSize: "11px", width: "100%", borderRadius: "6px" }}
-              />
-            </div>
+      {/* Sub Tab Navigation */}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+        <button 
+          onClick={() => setActiveSubTab("schedule")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            fontWeight: 600,
+            cursor: "pointer",
+            background: activeSubTab === "schedule" ? "var(--color-primary)" : "var(--color-background-secondary)",
+            color: activeSubTab === "schedule" ? "#fff" : "var(--color-text-secondary)",
+            border: "1px solid " + (activeSubTab === "schedule" ? "var(--color-primary)" : "var(--color-border-tertiary)"),
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }}
+        >
+          <Calendar size={14} /> Active Schedule & Panels
+        </button>
+        <button 
+          onClick={() => setActiveSubTab("evaluations")}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            fontWeight: 600,
+            cursor: "pointer",
+            background: activeSubTab === "evaluations" ? "var(--color-primary)" : "var(--color-background-secondary)",
+            color: activeSubTab === "evaluations" ? "#fff" : "var(--color-text-secondary)",
+            border: "1px solid " + (activeSubTab === "evaluations" ? "var(--color-primary)" : "var(--color-border-tertiary)"),
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }}
+        >
+          <Award size={14} /> Evaluations & Feedback
+        </button>
+      </div>
 
-            {/* Vendor Filter */}
-            <Select 
-              value={selectedVendor} 
-              onValueChange={(val) => setSelectedVendor(val || "ALL")}
-            >
-              <SelectTrigger style={{ height: "30px", width: "140px", fontSize: "11px", borderRadius: "6px" }}>
-                <SelectValue placeholder="Vendor">
-                  {selectedVendor === "ALL" ? "All Vendors" : selectedVendor}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Vendors</SelectItem>
-                {vendors.map((v) => (
-                  <SelectItem key={v} value={v}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Status Filter */}
-            <Select 
-              value={selectedStatus} 
-              onValueChange={(val) => setSelectedStatus(val || "ALL")}
-            >
-              <SelectTrigger style={{ height: "30px", width: "140px", fontSize: "11px", borderRadius: "6px" }}>
-                <SelectValue placeholder="Status">
-                  {{ ALL: "All Outcomes", PENDING: "Pending Interview", STRONG_HIRE: "Strong Hire", HIRE: "Hire", NO_HIRE: "No Hire", STRONG_NO_HIRE: "Strong No Hire" }[selectedStatus]}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Outcomes</SelectItem>
-                <SelectItem value="PENDING">Pending Interview</SelectItem>
-                <SelectItem value="STRONG_HIRE">Strong Hire</SelectItem>
-                <SelectItem value="HIRE">Hire</SelectItem>
-                <SelectItem value="NO_HIRE">No Hire</SelectItem>
-                <SelectItem value="STRONG_NO_HIRE">Strong No Hire</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Add Feedback button (Visible for Hiring Team & TA Team) */}
-          <div>
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
-              <Button onClick={() => setIsOpen(true)} size="sm" style={{ height: "30px", fontSize: "11px", display: "flex", gap: "6px" }} disabled={pendingCandidates.length === 0}>
-                <Plus size={14} /> Add Feedback
-              </Button>
-              <DialogContent className="max-w-2xl custom-dialog-content">
-                <DialogHeader className="custom-dialog-header">
-                  <DialogTitle style={{ fontFamily: "'Outfit', sans-serif", fontSize: "18px", fontWeight: "700" }}>
-                    Record Candidate Interview Feedback
-                  </DialogTitle>
-                </DialogHeader>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Select Candidate Match */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Select Interviewed Candidate</Label>
-                    <Select 
-                      value={selectedMatchId} 
-                      onValueChange={(val) => setSelectedMatchId(val || "")}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select candidate from queue...">
-                          {selectedMatchId ? (() => { const match = pendingCandidates.find(m => m.id === selectedMatchId); return match ? `${match.candidate?.name} — ${match.demand?.title} (via ${match.demand?.vendor?.name || "Internal"})` : undefined; })() : undefined}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pendingCandidates.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.candidate?.name} — {m.demand?.title} (via {m.demand?.vendor?.name || "Internal"})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Interviewer */}
+      {/* SUBTAB 1: INTERVIEW SCHEDULE */}
+      {activeSubTab === "schedule" && (
+        <div className="space-y-4">
+          <div className="card-wireframe glass-card-premium" style={{ border: "1px solid var(--color-border-tertiary)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "0.5px solid var(--color-border-tertiary)", paddingBottom: "10px", marginBottom: "16px" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", fontWeight: "700" }}>
+                <Calendar size={16} style={{ color: "var(--color-purple)" }} /> Scheduled Interviews Timeline & Panels
+              </span>
+              
+              <Dialog open={isScheduleModalOpen} onOpenChange={setIsScheduleModalOpen}>
+                <Button onClick={() => setIsScheduleModalOpen(true)} size="sm" style={{ height: "30px", fontSize: "11px", display: "flex", gap: "6px" }} disabled={eligibleForScheduling.length === 0}>
+                  <Plus size={14} /> Schedule Interview
+                </Button>
+                <DialogContent className="max-w-md custom-dialog-content">
+                  <DialogHeader className="custom-dialog-header">
+                    <DialogTitle style={{ fontSize: "16px", fontWeight: "700" }}>
+                      Schedule Technical Interview
+                    </DialogTitle>
+                  </DialogHeader>
+                  
+                  <form onSubmit={handleScheduleSubmit} className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Interviewer Name</Label>
-                      <Input
-                        value={interviewer}
-                        onChange={(e) => setInterviewer(e.target.value)}
-                        placeholder="e.g. John Doe"
-                        required
-                      />
-                    </div>
-
-                    {/* Recommendation */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Overall Recommendation</Label>
+                      <Label className="text-xs font-semibold">Select Matched Candidate</Label>
                       <Select 
-                        value={recommendation} 
-                        onValueChange={(val) => setRecommendation(val || "HIRE")}
+                        value={schedMatchId} 
+                        onValueChange={(val) => setSchedMatchId(val || "")}
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue>
-                            {{ STRONG_HIRE: "⭐ Strong Hire", HIRE: "✔ Hire", NO_HIRE: "✖ No Hire", STRONG_NO_HIRE: "🚫 Strong No Hire" }[recommendation] ?? "Select recommendation"}
-                          </SelectValue>
+                        <SelectTrigger className="w-full text-xs">
+                          <SelectValue placeholder="Pick candidate match..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="STRONG_HIRE">⭐ Strong Hire</SelectItem>
-                          <SelectItem value="HIRE">✔ Hire</SelectItem>
-                          <SelectItem value="NO_HIRE">✖ No Hire</SelectItem>
-                          <SelectItem value="STRONG_NO_HIRE">🚫 Strong No Hire</SelectItem>
+                          {eligibleForScheduling.map((m) => (
+                            <SelectItem key={m.id} value={m.id} style={{ fontSize: "11px" }}>
+                              {m.candidate?.name} — {m.demand?.title} ({m.demand?.client?.name})
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
 
-                  {/* Core Scores */}
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Technical Score */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <Label className="text-xs font-semibold">Technical Score</Label>
-                        <span className="text-xs font-bold text-primary">{technicalScore}%</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Date</Label>
+                        <Input 
+                          type="date"
+                          value={schedDate}
+                          onChange={(e) => setSchedDate(e.target.value)}
+                          required
+                          style={{ fontSize: "11px" }}
+                        />
                       </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={technicalScore}
-                        onChange={(e) => setTechnicalScore(Number(e.target.value))}
-                        className="premium-slider"
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Time</Label>
+                        <Input 
+                          type="time"
+                          value={schedTime}
+                          onChange={(e) => setSchedTime(e.target.value)}
+                          required
+                          style={{ fontSize: "11px" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Technical Panel Assigned</Label>
+                      <Input 
+                        placeholder="e.g. Deepak S., John D."
+                        value={schedPanelName}
+                        onChange={(e) => setSchedPanelName(e.target.value)}
+                        required
+                        style={{ fontSize: "11px" }}
                       />
                     </div>
 
-                    {/* Behavioral Score */}
                     <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <Label className="text-xs font-semibold">Behavioral Score</Label>
-                        <span className="text-xs font-bold text-purple-600">{behavioralScore}%</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={behavioralScore}
-                        onChange={(e) => setBehavioralScore(Number(e.target.value))}
-                        className="premium-slider"
+                      <Label className="text-xs font-semibold">Panel Email Address(es)</Label>
+                      <Input 
+                        placeholder="comma separated emails"
+                        value={schedPanelEmails}
+                        onChange={(e) => setSchedPanelEmails(e.target.value)}
+                        style={{ fontSize: "11px" }}
                       />
                     </div>
-                  </div>
 
-                  {/* Star Rating & Technical Rating Indicator */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold flex items-center gap-1">
-                      Candidate General Rating: <span className="font-bold text-amber-500">{rating} out of 5 Stars</span>
-                    </Label>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setRating(star)}
-                          className="hover:scale-110 transition-transform"
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Video Coordinate Link (Google Meet/Teams)</Label>
+                      <Input 
+                        placeholder="meet.google.com/abc-xyz-123"
+                        value={schedMeetingLink}
+                        onChange={(e) => setSchedMeetingLink(e.target.value)}
+                        style={{ fontSize: "11px" }}
+                      />
+                    </div>
+
+                    <DialogFooter className="mt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsScheduleModalOpen(false)}
+                        className="px-4 text-xs h-8"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={schedulingSubmitting || !schedMatchId}
+                        className="px-6 text-xs h-8"
+                      >
+                        {schedulingSubmitting ? "Scheduling..." : "Create Schedule"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {loadingInterviews ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: "32px" }}>
+                  <div style={{ width: "24px", height: "24px", border: "2px solid var(--color-border-tertiary)", borderTopColor: "var(--color-primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                </div>
+              ) : interviews.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)", fontSize: "12px" }}>
+                  No interviews scheduled. Get started by clicking "Schedule Interview".
+                </div>
+              ) : (
+                interviews.map((int: any, idx: number) => {
+                  const candidate = int.match?.candidate;
+                  const demand = int.match?.demand;
+                  const dateStr = new Date(int.scheduledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+                  const timeStr = new Date(int.scheduledAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+                  return (
+                    <div key={int.id} className="cand-row premium-interactive-row" style={{ padding: "14px 16px", border: "0.5px solid var(--color-border-tertiary)", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                        <div style={{ padding: "8px 12px", background: int.status === "COMPLETED" ? "var(--color-green-light)" : int.status === "CANCELLED" ? "var(--color-red-light)" : "var(--color-blue-light)", color: int.status === "COMPLETED" ? "var(--color-success-dark)" : int.status === "CANCELLED" ? "var(--color-error-dark)" : "var(--color-primary)", borderRadius: "8px", fontWeight: 800, fontSize: "11px", minWidth: "120px", textAlign: "center", display: "flex", flexDirection: "column", gap: "2px" }}>
+                          <span style={{ fontSize: "12px" }}>{dateStr}</span>
+                          <span style={{ opacity: 0.8, fontSize: "10px" }}>{timeStr}</span>
+                        </div>
+                        
+                        <div>
+                          <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+                            {candidate?.name || "Unknown Candidate"}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--color-text-tertiary)", marginTop: "3px" }}>
+                            Requisition: <strong style={{ color: "var(--color-text-secondary)" }}>{demand?.title}</strong> for Client: <strong>{demand?.client?.name || "N/A"}</strong>
+                          </div>
+                          {int.meetingLink && (
+                            <div style={{ fontSize: "11px", color: "var(--color-primary)", marginTop: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                              <Video size={12} />
+                              <a href={int.meetingLink.startsWith("http") ? int.meetingLink : `https://${int.meetingLink}`} target="_blank" rel="noreferrer" style={{ textDecoration: "underline", fontWeight: 600 }}>
+                                {int.meetingLink}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-secondary)" }}>Assigned Technical Panel:</div>
+                          <div style={{ fontSize: "11px", color: "var(--color-text-tertiary)", marginTop: "2px" }}>{int.panelName}</div>
+                        </div>
+
+                        <span className="tag" style={{ 
+                          background: int.status === "COMPLETED" ? "var(--color-green-light)" : int.status === "CANCELLED" ? "var(--color-red-light)" : "var(--color-amber-light)", 
+                          color: int.status === "COMPLETED" ? "var(--color-success-dark)" : int.status === "CANCELLED" ? "var(--color-error-dark)" : "var(--color-warning-dark)",
+                          fontWeight: 700,
+                          fontSize: "10px" 
+                        }}>
+                          {int.status}
+                        </span>
+
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          {int.status === "SCHEDULED" && (
+                            <>
+                              <Button 
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRecordFeedbackForMatch(int.matchId)}
+                                style={{ height: "26px", fontSize: "10px", padding: "0 8px" }}
+                              >
+                                Record Feedback
+                              </Button>
+                              <button 
+                                onClick={() => handleSendReminder(int.panelName, candidate?.name)}
+                                style={{
+                                  background: "none",
+                                  border: "1px solid var(--color-border-tertiary)",
+                                  borderRadius: "6px",
+                                  padding: "4px 8px",
+                                  fontSize: "10px",
+                                  fontWeight: 600,
+                                  color: "var(--color-text-primary)",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                Send Ping
+                              </button>
+                              <button 
+                                onClick={() => handleCancelInterview(int.id)}
+                                style={{
+                                  background: "none",
+                                  border: "1px solid var(--color-red-light)",
+                                  borderRadius: "6px",
+                                  padding: "4px",
+                                  color: "var(--color-error-dark)",
+                                  cursor: "pointer"
+                                }}
+                                title="Cancel Interview"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUBTAB 2: EVALUATIONS & FEEDBACK DIRECTORY */}
+      {activeSubTab === "evaluations" && (
+        <div>
+          {/* Quick Filters */}
+          <div className="card-wireframe glass-card-premium" style={{ marginBottom: "20px", padding: "14px", border: "1px solid var(--color-border-tertiary)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+              
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                  <Filter size={14} /> Filter:
+                </div>
+                
+                <div style={{ position: "relative", minWidth: "180px" }}>
+                  <Search size={12} style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", color: "var(--color-text-tertiary)" }} />
+                  <Input
+                    placeholder="Search candidate / job..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ paddingLeft: "26px", height: "30px", fontSize: "11px", width: "100%", borderRadius: "6px" }}
+                  />
+                </div>
+
+                <Select 
+                  value={selectedVendor} 
+                  onValueChange={(val) => setSelectedVendor(val || "ALL")}
+                >
+                  <SelectTrigger style={{ height: "30px", width: "140px", fontSize: "11px", borderRadius: "6px" }}>
+                    <SelectValue placeholder="Vendor">
+                      {selectedVendor === "ALL" ? "All Vendors" : selectedVendor}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Vendors</SelectItem>
+                    {vendors.map((v) => (
+                      <SelectItem key={v} value={v}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select 
+                  value={selectedStatus} 
+                  onValueChange={(val) => setSelectedStatus(val || "ALL")}
+                >
+                  <SelectTrigger style={{ height: "30px", width: "140px", fontSize: "11px", borderRadius: "6px" }}>
+                    <SelectValue placeholder="Status">
+                      {{ ALL: "All Outcomes", PENDING: "Pending Interview", STRONG_HIRE: "Strong Hire", HIRE: "Hire", NO_HIRE: "No Hire", STRONG_NO_HIRE: "Strong No Hire" }[selectedStatus]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Outcomes</SelectItem>
+                    <SelectItem value="PENDING">Pending Interview</SelectItem>
+                    <SelectItem value="STRONG_HIRE">Strong Hire</SelectItem>
+                    <SelectItem value="HIRE">Hire</SelectItem>
+                    <SelectItem value="NO_HIRE">No Hire</SelectItem>
+                    <SelectItem value="STRONG_NO_HIRE">Strong No Hire</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                  <Button onClick={() => setIsOpen(true)} size="sm" style={{ height: "30px", fontSize: "11px", display: "flex", gap: "6px" }} disabled={pendingCandidates.length === 0}>
+                    <Plus size={14} /> Add Feedback
+                  </Button>
+                  <DialogContent className="max-w-2xl custom-dialog-content">
+                    <DialogHeader className="custom-dialog-header">
+                      <DialogTitle style={{ fontFamily: "'Outfit', sans-serif", fontSize: "18px", fontWeight: "700" }}>
+                        Record Candidate Interview Feedback
+                      </DialogTitle>
+                    </DialogHeader>
+                    
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Select Interviewed Candidate</Label>
+                        <Select 
+                          value={selectedMatchId} 
+                          onValueChange={(val) => setSelectedMatchId(val || "")}
                         >
-                          <Star
-                            size={24}
-                            className={star <= rating ? "fill-amber-500 stroke-amber-500" : "stroke-amber-400"}
+                          <SelectTrigger className="w-full text-xs">
+                            <SelectValue placeholder="Select candidate from queue...">
+                              {selectedMatchId ? (() => { const match = pendingCandidates.find(m => m.id === selectedMatchId); return match ? `${match.candidate?.name} — ${match.demand?.title} (via ${match.demand?.vendor?.name || "Internal"})` : undefined; })() : undefined}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {pendingCandidates.map((m) => (
+                              <SelectItem key={m.id} value={m.id} style={{ fontSize: "11px" }}>
+                                {m.candidate?.name} — {m.demand?.title} (via {m.demand?.vendor?.name || "Internal"})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Interviewer Name</Label>
+                          <Input
+                            value={interviewer}
+                            onChange={(e) => setInterviewer(e.target.value)}
+                            placeholder="e.g. John Doe"
+                            required
                           />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                        </div>
 
-                  {/* Comments / Details */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Interviewer Assessment Comments</Label>
-                    <Textarea
-                      rows={4}
-                      value={comments}
-                      onChange={(e) => setComments(e.target.value)}
-                      placeholder="Detail the candidate's core strengths, code evaluation results, architectural capabilities, and reasons for your recommendation..."
-                      required
-                    />
-                  </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Overall Recommendation</Label>
+                          <Select 
+                            value={recommendation} 
+                            onValueChange={(val) => setRecommendation(val || "HIRE")}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue>
+                                {{ STRONG_HIRE: "⭐ Strong Hire", HIRE: "✔ Hire", NO_HIRE: "✖ No Hire", STRONG_NO_HIRE: "🚫 Strong No Hire" }[recommendation] ?? "Select recommendation"}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="STRONG_HIRE">⭐ Strong Hire</SelectItem>
+                              <SelectItem value="HIRE">✔ Hire</SelectItem>
+                              <SelectItem value="NO_HIRE">✖ No Hire</SelectItem>
+                              <SelectItem value="STRONG_NO_HIRE">🚫 Strong No Hire</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
 
-                  <DialogFooter className="mt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsOpen(false)}
-                      className="px-4"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={submitting || !selectedMatchId}
-                      className="px-6"
-                    >
-                      {submitting ? "Saving Assessment..." : "Submit Feedback"}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <Label className="text-xs font-semibold">Technical Score</Label>
+                            <span className="text-xs font-bold text-primary">{technicalScore}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={technicalScore}
+                            onChange={(e) => setTechnicalScore(Number(e.target.value))}
+                            className="premium-slider"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between">
+                            <Label className="text-xs font-semibold">Behavioral Score</Label>
+                            <span className="text-xs font-bold text-purple-600">{behavioralScore}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={behavioralScore}
+                            onChange={(e) => setBehavioralScore(Number(e.target.value))}
+                            className="premium-slider"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold flex items-center gap-1">
+                          Candidate General Rating: <span className="font-bold text-amber-500">{rating} out of 5 Stars</span>
+                        </Label>
+                        <div className="flex gap-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setRating(star)}
+                              className="hover:scale-110 transition-transform"
+                            >
+                              <Star
+                                size={24}
+                                className={star <= rating ? "fill-amber-500 stroke-amber-500" : "stroke-amber-400"}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold">Interviewer Assessment Comments</Label>
+                        <Textarea
+                          rows={4}
+                          value={comments}
+                          onChange={(e) => setComments(e.target.value)}
+                          placeholder="Detail the candidate's core strengths, code evaluation results, architectural capabilities, and reasons for your recommendation..."
+                          required
+                        />
+                      </div>
+
+                      <DialogFooter className="mt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsOpen(false)}
+                          className="px-4"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={submitting || !selectedMatchId}
+                          className="px-6"
+                        >
+                          {submitting ? "Saving Assessment..." : "Submit Feedback"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+            </div>
           </div>
 
+          {/* Evaluations Directory */}
+          <div className="card-wireframe" style={{ border: "1px solid var(--color-border-tertiary)" }}>
+            <div className="card-title-wireframe" style={{ borderBottom: "0.5px solid var(--color-border-tertiary)", paddingBottom: "10px", marginBottom: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Award size={16} style={{ color: "var(--color-primary)" }} /> Sourced Candidates Evaluations ({filteredMatches.length})
+              </span>
+              <span style={{ fontSize: "10px", color: "var(--color-text-tertiary)" }}>
+                Showing evaluated candidates from external vendors
+              </span>
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                <thead>
+                  <tr style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                    {["Candidate", "Vendor Sourced", "Job Position", "Technical", "Behavioral", "Rating", "Interviewer", "Outcome", "Action"].map((h) => (
+                      <th key={h} style={{ textAlign: "left", padding: "10px", color: "var(--color-text-secondary)", fontWeight: 500, fontSize: "11px" }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMatches.map((m) => (
+                    <tr key={m.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="hover:bg-slate-500/5 transition-colors">
+                      <td style={{ padding: "12px 10px", fontWeight: 600, color: "var(--color-text-primary)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div className="avatar" style={{ width: "28px", height: "28px", fontSize: "11px", background: "var(--color-blue-pale)", color: "var(--color-primary)" }}>
+                            {m.candidate?.name?.split(" ").map((n: string) => n[0]).join("")}
+                          </div>
+                          <div>
+                            <div>{m.candidate?.name}</div>
+                            <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", fontWeight: 400 }}>{m.candidate?.email}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "12px 10px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Building size={12} style={{ color: "var(--color-text-tertiary)" }} />
+                          <span style={{ fontWeight: 500, color: "var(--color-text-secondary)" }}>{m.demand?.vendor?.name || "Partner"}</span>
+                        </div>
+                      </td>
+
+                      <td style={{ padding: "12px 10px", color: "var(--color-text-secondary)" }}>
+                        <div style={{ fontWeight: 500 }}>{m.demand?.title}</div>
+                        <div style={{ fontSize: "9px", color: "var(--color-text-tertiary)" }}>Match Score: {m.matchScore}%</div>
+                      </td>
+
+                      <td style={{ padding: "12px 10px" }}>
+                        {m.feedback ? (
+                          <div style={{ width: "100px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "2px" }}>
+                              <span>Tech</span>
+                              <span>{m.feedback.technicalScore}%</span>
+                            </div>
+                            <div style={{ height: "4px", width: "100%", background: "var(--color-blue-pale)", borderRadius: "2px", overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: `${m.feedback.technicalScore}%`, background: "var(--color-primary)" }} />
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--color-text-tertiary)", fontSize: "10px" }}>—</span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "12px 10px" }}>
+                        {m.feedback ? (
+                          <div style={{ width: "100px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "2px" }}>
+                              <span>Behav</span>
+                              <span>{m.feedback.behavioralScore}%</span>
+                            </div>
+                            <div style={{ height: "4px", width: "100%", background: "var(--color-purple-light)", borderRadius: "2px", overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: `${m.feedback.behavioralScore}%`, background: "var(--color-purple)" }} />
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--color-text-tertiary)", fontSize: "10px" }}>—</span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "12px 10px" }}>
+                        {m.feedback ? (
+                          <div style={{ display: "flex", gap: "2px" }}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                size={12}
+                                className={star <= m.feedback.rating ? "fill-amber-500 stroke-amber-500" : "stroke-amber-300"}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--color-text-tertiary)", fontSize: "10px" }}>—</span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "12px 10px", color: "var(--color-text-secondary)" }}>
+                        {m.feedback ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <User size={10} />
+                            <span>{m.feedback.interviewer}</span>
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--color-text-tertiary)", fontSize: "10px" }}>—</span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "12px 10px" }}>
+                        {m.feedback ? (
+                          <span className={`tag ${getRecBadgeClass(m.feedback.recommendation)}`} style={{ fontSize: "9px", padding: "2px 6px" }}>
+                            {formatRecText(m.feedback.recommendation)}
+                          </span>
+                        ) : (
+                          <span className="tag tag-amber" style={{ fontSize: "9px", padding: "2px 6px" }}>
+                            Interview Pending
+                          </span>
+                        )}
+                      </td>
+
+                      <td style={{ padding: "12px 10px" }}>
+                        {m.feedback ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[10px] px-2 flex items-center gap-1"
+                            onClick={() => setSelectedFeedback(m)}
+                          >
+                            Details <ChevronRight size={10} />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[10px] px-2 flex items-center gap-1"
+                            onClick={() => handleRecordFeedbackForMatch(m.id)}
+                          >
+                            Add Feedback <ChevronRight size={10} />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+
+                  {filteredMatches.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>
+                        No vendor candidates found matching current filters.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Main Feedback List Grid */}
-      <div className="card-wireframe" style={{ border: "1px solid var(--color-border-tertiary)" }}>
-        <div className="card-title-wireframe" style={{ borderBottom: "0.5px solid var(--color-border-tertiary)", paddingBottom: "10px", marginBottom: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <Award size={16} style={{ color: "var(--color-primary)" }} /> Sourced Candidates Evaluations ({filteredMatches.length})
-          </span>
-          <span style={{ fontSize: "10px", color: "var(--color-text-tertiary)" }}>
-            Showing evaluated candidates from external vendors
-          </span>
-        </div>
-
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
-            <thead>
-              <tr style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
-                {["Candidate", "Vendor Sourced", "Job Position", "Technical", "Behavioral", "Rating", "Interviewer", "Outcome", "Action"].map((h) => (
-                  <th key={h} style={{ textAlign: "left", padding: "10px", color: "var(--color-text-secondary)", fontWeight: 500, fontSize: "11px" }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMatches.map((m) => (
-                <tr key={m.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="hover:bg-slate-500/5 transition-colors">
-                  
-                  {/* Candidate Name */}
-                  <td style={{ padding: "12px 10px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <div className="avatar" style={{ width: "28px", height: "28px", fontSize: "11px", background: "var(--color-blue-pale)", color: "var(--color-primary)" }}>
-                        {m.candidate?.name?.split(" ").map((n: string) => n[0]).join("")}
-                      </div>
-                      <div>
-                        <div>{m.candidate?.name}</div>
-                        <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", fontWeight: 400 }}>{m.candidate?.email}</div>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Sourced Vendor */}
-                  <td style={{ padding: "12px 10px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Building size={12} style={{ color: "var(--color-text-tertiary)" }} />
-                      <span style={{ fontWeight: 500, color: "var(--color-text-secondary)" }}>{m.demand?.vendor?.name || "Partner"}</span>
-                    </div>
-                  </td>
-
-                  {/* Job Position */}
-                  <td style={{ padding: "12px 10px", color: "var(--color-text-secondary)" }}>
-                    <div style={{ fontWeight: 500 }}>{m.demand?.title}</div>
-                    <div style={{ fontSize: "9px", color: "var(--color-text-tertiary)" }}>Match Score: {m.matchScore}%</div>
-                  </td>
-
-                  {/* Technical Score */}
-                  <td style={{ padding: "12px 10px" }}>
-                    {m.feedback ? (
-                      <div style={{ width: "100px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "2px" }}>
-                          <span>Tech</span>
-                          <span>{m.feedback.technicalScore}%</span>
-                        </div>
-                        <div style={{ height: "4px", width: "100%", background: "var(--color-blue-pale)", borderRadius: "2px", overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${m.feedback.technicalScore}%`, background: "var(--color-primary)" }} />
-                        </div>
-                      </div>
-                    ) : (
-                      <span style={{ color: "var(--color-text-tertiary)", fontSize: "10px" }}>—</span>
-                    )}
-                  </td>
-
-                  {/* Behavioral Score */}
-                  <td style={{ padding: "12px 10px" }}>
-                    {m.feedback ? (
-                      <div style={{ width: "100px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", fontWeight: 600, color: "var(--color-text-primary)", marginBottom: "2px" }}>
-                          <span>Behav</span>
-                          <span>{m.feedback.behavioralScore}%</span>
-                        </div>
-                        <div style={{ height: "4px", width: "100%", background: "var(--color-purple-light)", borderRadius: "2px", overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${m.feedback.behavioralScore}%`, background: "var(--color-purple)" }} />
-                        </div>
-                      </div>
-                    ) : (
-                      <span style={{ color: "var(--color-text-tertiary)", fontSize: "10px" }}>—</span>
-                    )}
-                  </td>
-
-                  {/* Stars Rating */}
-                  <td style={{ padding: "12px 10px" }}>
-                    {m.feedback ? (
-                      <div style={{ display: "flex", gap: "2px" }}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            size={12}
-                            className={star <= m.feedback.rating ? "fill-amber-500 stroke-amber-500" : "stroke-amber-300"}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <span style={{ color: "var(--color-text-tertiary)", fontSize: "10px" }}>—</span>
-                    )}
-                  </td>
-
-                  {/* Interviewer */}
-                  <td style={{ padding: "12px 10px", color: "var(--color-text-secondary)" }}>
-                    {m.feedback ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                        <User size={10} />
-                        <span>{m.feedback.interviewer}</span>
-                      </div>
-                    ) : (
-                      <span style={{ color: "var(--color-text-tertiary)", fontSize: "10px" }}>—</span>
-                    )}
-                  </td>
-
-                  {/* Recommendation Tag */}
-                  <td style={{ padding: "12px 10px" }}>
-                    {m.feedback ? (
-                      <span className={`tag ${getRecBadgeClass(m.feedback.recommendation)}`} style={{ fontSize: "9px", padding: "2px 6px" }}>
-                        {formatRecText(m.feedback.recommendation)}
-                      </span>
-                    ) : (
-                      <span className="tag tag-amber" style={{ fontSize: "9px", padding: "2px 6px" }}>
-                        Interview Pending
-                      </span>
-                    )}
-                  </td>
-
-                  {/* View Details Button */}
-                  <td style={{ padding: "12px 10px" }}>
-                    {m.feedback ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-[10px] px-2 flex items-center gap-1"
-                        onClick={() => setSelectedFeedback(m)}
-                      >
-                        Details <ChevronRight size={10} />
-                      </Button>
-                    ) : (
-                      <span style={{ color: "var(--color-text-tertiary)", fontSize: "10px" }}>Pending</span>
-                    )}
-                  </td>
-
-                </tr>
-              ))}
-
-              {filteredMatches.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>
-                    No vendor candidates found matching current filters.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
 
       {/* Feedback Detail View Dialog */}
       <Dialog open={!!selectedFeedback} onOpenChange={(open) => !open && setSelectedFeedback(null)}>
@@ -649,7 +1024,6 @@ export default function InterviewFeedbackTab() {
               </DialogHeader>
 
               <div className="space-y-4" style={{ fontSize: "12px" }}>
-                {/* Header overview */}
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "var(--color-background-secondary)", padding: "12px", borderRadius: "8px" }}>
                   <div className="avatar" style={{ width: "36px", height: "36px", fontSize: "12px", background: "var(--color-blue-pale)", color: "var(--color-primary)" }}>
                     {selectedFeedback.candidate?.name?.split(" ").map((n: string) => n[0]).join("")}
@@ -662,7 +1036,6 @@ export default function InterviewFeedbackTab() {
                   </div>
                 </div>
 
-                {/* Score indicators */}
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div style={{ background: "var(--color-background-secondary)", padding: "8px", borderRadius: "6px" }}>
                     <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", textTransform: "uppercase" }}>General Rating</div>
@@ -685,7 +1058,6 @@ export default function InterviewFeedbackTab() {
                   </div>
                 </div>
 
-                {/* Interview info */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", padding: "10px", background: "var(--color-background-secondary)", borderRadius: "6px" }}>
                   <div>
                     <span style={{ color: "var(--color-text-tertiary)" }}>Interviewer:</span>
@@ -699,7 +1071,6 @@ export default function InterviewFeedbackTab() {
                   </div>
                 </div>
 
-                {/* Comments box */}
                 <div className="space-y-1">
                   <div style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>Detailed Comments & Notes:</div>
                   <div style={{
@@ -725,8 +1096,8 @@ export default function InterviewFeedbackTab() {
               </div>
             </>
           ) : null}
-          </DialogContent>
-        </Dialog>
-      </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

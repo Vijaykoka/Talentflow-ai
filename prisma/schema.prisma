@@ -123,6 +123,7 @@ model JobCandidateMatch {
   demand    Demand    @relation(fields: [demandId], references: [id], onDelete: Cascade)
   candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   feedback  InterviewFeedback?
+  interviews Interview[]
 
   @@unique([demandId, candidateId])
   @@index([demandId])
@@ -166,4 +167,20 @@ model Hire {
 
   @@index([demandId])
   @@index([candidateId])
+}
+
+model Interview {
+  id              String   @id @default(uuid())
+  matchId         String
+  scheduledAt     DateTime
+  panelName       String   // e.g. "Deepak S., John D."
+  panelEmails     String?  // comma-separated emails
+  meetingLink     String?
+  status          String   @default("SCHEDULED") // "SCHEDULED" | "COMPLETED" | "CANCELLED"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  match           JobCandidateMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([matchId])
 }
