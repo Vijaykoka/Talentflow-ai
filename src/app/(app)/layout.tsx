@@ -425,15 +425,6 @@ function Topbar() {
         </div>
         <span className="badge-blue">Vibeathon 2026</span>
         <div className="topbar-right">
-          <a
-            href="/presentation"
-            target="_blank"
-            className="theme-toggle flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 rounded-lg transition text-xs font-bold"
-            style={{ textDecoration: 'none' }}
-            title="Open Interactive PPT Presentation Pitch Deck"
-          >
-            <IconSparkles size={14} className="animate-pulse" /> Pitch Deck
-          </a>
           <button
             className="theme-toggle"
             onClick={() => setShowWalkthrough(true)}
