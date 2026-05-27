@@ -87,6 +87,7 @@ export default function TdafTab() {
   const [generatedEmail, setGeneratedEmail] = useState<string>("");
   const [isCopied, setIsCopied] = useState<boolean>(false);
   const [showNotification, setShowNotification] = useState<string | null>(null);
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   // Pre-onboarding checklist mock tracker
   const [onboardingChecks, setOnboardingChecks] = useState<Record<string, Record<string, boolean>>>({
@@ -338,21 +339,21 @@ TalentFlow AI Core`;
               {/* Executive Summary Widgets Grid (10 Widgets) */}
               <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: "16px" }}>
                 
-                <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-primary)" } as React.CSSProperties}>
+                <div className="premium-kpi-card" onClick={() => setActiveDialog("open_demands")} style={{ "--kpi-color": "var(--color-primary)", cursor: "pointer" } as React.CSSProperties}>
                   <IconBriefcase className="premium-kpi-icon" size={32} />
                   <div className="kpi-label">Open Demands</div>
                   <div className="kpi-val">{openDemandsCount}</div>
                   <div className="kpi-delta up">Active Job Openings</div>
                 </div>
 
-                <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-success)" } as React.CSSProperties}>
+                <div className="premium-kpi-card" onClick={() => setActiveDialog("closed_demands")} style={{ "--kpi-color": "var(--color-success)", cursor: "pointer" } as React.CSSProperties}>
                   <IconCheck className="premium-kpi-icon" size={32} />
                   <div className="kpi-label">Closed Demands</div>
                   <div className="kpi-val" style={{ color: "var(--color-success-dark)" }}>{closedDemandsCount}</div>
                   <div className="kpi-delta up">Positions Fulfilled</div>
                 </div>
 
-                <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-error)" } as React.CSSProperties}>
+                <div className="premium-kpi-card" onClick={() => setActiveDialog("critical_sla")} style={{ "--kpi-color": "var(--color-error)", cursor: "pointer" } as React.CSSProperties}>
                   <IconAlertCircle className="premium-kpi-icon" size={32} />
                   <div className="kpi-label">Critical SLA Aging</div>
                   <div className="kpi-val" style={{ color: "var(--color-error-dark)" }}>{criticalSlaPositions.length}</div>
@@ -1321,6 +1322,149 @@ TalentFlow AI Core`;
         </div>
 
       </div>
+
+      {/* Dialog Overlays */}
+      {activeDialog && (
+        <div className="custom-dialog-overlay" onClick={() => setActiveDialog(null)}>
+          <div className="custom-dialog-content" onClick={e => e.stopPropagation()} style={{ maxWidth: "800px" }}>
+            
+            <button className="custom-dialog-close" onClick={() => setActiveDialog(null)}>
+              <IconX size={18} />
+            </button>
+
+            {activeDialog === "open_demands" && (
+              <>
+                <div className="custom-dialog-header">
+                  Active Open Project Requisitions ({openDemandsCount})
+                </div>
+                <div className="custom-dialog-body">
+                  <p style={{ fontSize: "11px", color: "var(--color-text-secondary)", marginBottom: "12px" }}>
+                    Showing all client requisitions currently open in sourcing or recruitment pipeline stages.
+                  </p>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "0.5px solid var(--color-border-tertiary)", textAlign: "left" }}>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Role Details</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Client Account</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Budget</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {demandsState
+                        .filter((d: any) => d.status === "OPEN")
+                        .slice(0, 10)
+                        .map((demand: any) => (
+                          <tr key={demand.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                            <td style={{ padding: "10px 8px" }}>
+                              <div style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>{demand.title}</div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+                                {safeParseSkills(demand.requiredSkills).slice(0, 3).map(s => (
+                                  <span key={s} className="tag tag-blue" style={{ fontSize: "9px" }}>{s}</span>
+                                ))}
+                              </div>
+                            </td>
+                            <td style={{ padding: "10px 8px", fontWeight: 600, color: "var(--color-primary)" }}>{demand.client?.name || "Corporate Account"}</td>
+                            <td style={{ padding: "10px 8px", fontWeight: 600, color: "var(--color-text-primary)" }}>${demand.rateMin}-${demand.rateMax}/hr</td>
+                            <td style={{ padding: "10px 8px" }}>
+                              <span className="tag" style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                background: demand.priority === "HIGH" ? "var(--color-red-light)" : "var(--color-amber-light)",
+                                color: demand.priority === "HIGH" ? "var(--color-error-dark)" : "var(--color-warning-dark)",
+                                fontWeight: 700, fontSize: "10px"
+                              }}><span style={{ width: "6px", height: "6px", borderRadius: "50%", background: demand.priority === "HIGH" ? "var(--color-error)" : "var(--color-warning)" }} />{demand.priority}</span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {activeDialog === "closed_demands" && (
+              <>
+                <div className="custom-dialog-header">
+                  Fulfilled / Closed Project Positions ({closedDemandsCount})
+                </div>
+                <div className="custom-dialog-body">
+                  <p style={{ fontSize: "11px", color: "var(--color-text-secondary)", marginBottom: "12px" }}>
+                    Showing internal consultants or vendor subcontractor placements actively deployed to enterprise client projects.
+                  </p>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "0.5px solid var(--color-border-tertiary)", textAlign: "left" }}>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Role Details</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Sponsoring Client</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Placed Consultant</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Start Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.recentHires.map((hire: any) => (
+                        <tr key={hire.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                          <td style={{ padding: "10px 8px" }}>
+                            <div style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>{hire.demandTitle}</div>
+                            <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", marginTop: "2px" }}>Source: {hire.vendorName}</div>
+                          </td>
+                          <td style={{ padding: "10px 8px", fontWeight: 600, color: "var(--color-primary)" }}>{hire.clientName}</td>
+                          <td style={{ padding: "10px 8px", fontWeight: 600 }}>{hire.candidateName}</td>
+                          <td style={{ padding: "10px 8px" }}>{new Date(hire.startDate).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {activeDialog === "critical_sla" && (
+              <>
+                <div className="custom-dialog-header">
+                  High-Priority SLA Escalations ({criticalSlaPositions.length})
+                </div>
+                <div className="custom-dialog-body">
+                  <p style={{ fontSize: "11px", color: "var(--color-text-secondary)", marginBottom: "12px" }}>
+                    Showing open demands aging over SLA targets or active bottlenecks breaching delivery deadlines.
+                  </p>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "0.5px solid var(--color-border-tertiary)", textAlign: "left" }}>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Escalation Bottleneck</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Account</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Duration</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Action Code</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { id: "1", title: "Senior AI Architect open > 5 days with zero submissions", client: "Google", priority: "CRITICAL", aging: "5 Days aging", action: "Ping staffing partners immediately" },
+                        { id: "2", title: "Recruiter inactivity warning: React Native position", client: "Amazon", priority: "HIGH", aging: "3 Days inactivity", action: "Reassign to vendorTechRecruit" },
+                        { id: "3", title: "Technical interview feedback pending by panel Deepak S.", client: "Stripe", priority: "CRITICAL", aging: "28 Hours delay", action: "Trigger SMS calendar notification" }
+                      ].map((esc: any) => (
+                        <tr key={esc.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
+                          <td style={{ padding: "10px 8px" }}>
+                            <div style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>{esc.title}</div>
+                            <span className="tag" style={{ background: "var(--color-red-light)", color: "var(--color-error-dark)", fontSize: "9px", display: "inline-block", marginTop: "4px" }}>
+                              {esc.priority}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 8px", fontWeight: 600 }}>{esc.client}</td>
+                          <td style={{ padding: "10px 8px", fontWeight: 600, color: "var(--color-error-dark)" }}>{esc.aging}</td>
+                          <td style={{ padding: "10px 8px", color: "var(--color-text-tertiary)", fontSize: "11px" }}>{esc.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+          </div>
+        </div>
+      )}
 
       {/* Embedded CSS styles block for Spacious layouts & Premium Aesthetics */}
       <style>{`
