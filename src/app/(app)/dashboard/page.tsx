@@ -38,6 +38,7 @@ import ClientTab from "./ClientTab";
 import ActivityTab from "./ActivityTab";
 import CreateDemandTab from "./CreateDemandTab";
 import InterviewFeedbackTab from "./InterviewFeedbackTab";
+import TdafTab from "./TdafTab";
 
 
 interface Stats {
@@ -104,6 +105,7 @@ export default function DashboardPage() {
 
   return (
     <>
+      {activeTab === "tdaf" && <TdafTab />}
       {activeTab === "demand" && <DemandTab />}
       {activeTab === "supply" && <SupplyTab />}
       {activeTab === "matching" && <MatchingTab />}

@@ -26,6 +26,7 @@ import {
   IconChevronDown,
   IconFilePlus,
   IconClipboardCheck,
+  IconGauge,
 } from "@tabler/icons-react";
 import { TabProvider, useTab, TabId } from "@/lib/context/tab-context";
 import { useSession, signOut } from "next-auth/react";
@@ -34,6 +35,7 @@ const navSections = [
   {
     label: "Core",
     items: [
+      { id: "tdaf" as TabId, label: "TDAF Center", icon: IconGauge },
       { id: "demand" as TabId, label: "Demand", icon: IconLayoutKanban },
       { id: "createDemand" as TabId, label: "Request Demand", icon: IconFilePlus },
       { id: "supply" as TabId, label: "Supply", icon: IconUsers },
@@ -71,7 +73,7 @@ const navSections = [
   },
 ];
 
-const HIRING_MANAGER_TABS: TabId[] = ["demand", "createDemand", "matching", "feedback"];
+const HIRING_MANAGER_TABS: TabId[] = ["tdaf", "demand", "createDemand", "matching", "feedback"];
 
 function SidebarNav() {
   const { activeTab, setActiveTab } = useTab();
