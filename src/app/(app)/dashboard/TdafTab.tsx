@@ -230,7 +230,7 @@ TalentFlow AI Core`;
   }
 
   // TDAF Metrics Calculations
-  const openDemandsCount = demandsState.filter((d: any) => d.status === "OPEN" || d.status === "IN_PROGRESS").length;
+  const openDemandsCount = demandsState.filter((d: any) => d.status === "OPEN").length;
   const closedDemandsCount = demandsState.filter((d: any) => d.status === "FILLED" || d.status === "CLOSED").length;
   const fulfillmentPercentage = Math.round((stats.totalHires / (stats.totalDemands || 1)) * 100);
 
@@ -566,11 +566,12 @@ TalentFlow AI Core`;
                   <tbody>
                     {demandsState
                       .filter((d: any) => {
+                        const matchesStatus = d.status === "OPEN";
                         const matchesSearch = d.title.toLowerCase().includes(demandSearch.toLowerCase()) || 
                                               (d.client?.name || "").toLowerCase().includes(demandSearch.toLowerCase()) ||
                                               d.requiredSkills.toLowerCase().includes(demandSearch.toLowerCase());
                         const matchesPriority = demandPriority === "ALL" ? true : d.priority === demandPriority;
-                        return matchesSearch && matchesPriority;
+                        return matchesStatus && matchesSearch && matchesPriority;
                       })
                       .map((demand) => {
                         const skills = safeParseSkills(demand.requiredSkills);
