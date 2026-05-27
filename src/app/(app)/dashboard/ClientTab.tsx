@@ -9,7 +9,8 @@ import {
   IconBriefcase, 
   IconCoins,
   IconArrowUpRight,
-  IconArrowDownRight
+  IconArrowDownRight,
+  IconMail
 } from "@tabler/icons-react";
 import { 
   ResponsiveContainer, 
@@ -18,10 +19,9 @@ import {
   XAxis, 
   YAxis, 
   Tooltip, 
-  Cell,
-  PieChart,
-  Pie
+  Cell
 } from "recharts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Stats {
   totalClients: number;
@@ -30,10 +30,17 @@ interface Stats {
   projectedMargin: number;
   allClients: any[];
   marginByClient: any[];
+  allHires: any[];
 }
 
 export default function ClientTab() {
   const [stats, setStats] = useState<Stats | null>(null);
+
+  // Popout States
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<"clients" | "demands" | "consultants" | "margin" | null>(null);
+  const [allDemandsList, setAllDemandsList] = useState<any[]>([]);
+  const [loadingDemands, setLoadingDemands] = useState(false);
 
   useEffect(() => {
     fetch("/api/stats")
@@ -41,6 +48,24 @@ export default function ClientTab() {
       .then(data => setStats(data))
       .catch(console.error);
   }, []);
+
+  const openDialog = (type: "clients" | "demands" | "consultants" | "margin") => {
+    setDialogType(type);
+    setIsDialogOpen(true);
+    if (type === "demands" && allDemandsList.length === 0) {
+      setLoadingDemands(true);
+      fetch("/api/demands")
+        .then(res => res.json())
+        .then(data => {
+          setAllDemandsList(data);
+          setLoadingDemands(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoadingDemands(false);
+        });
+    }
+  };
 
   if (!stats) return (
     <div style={{ display: "flex", justifyContent: "center", padding: "48px" }}>
@@ -66,6 +91,23 @@ export default function ClientTab() {
   // Curated color palette
   const COLORS = ["var(--color-primary)", "var(--color-blue-mid)", "var(--color-purple)", "var(--color-success)", "#D85A30", "#378ADD", "#8B5CF6", "#EF4444", "#10B981", "#F59E0B"];
 
+  const fmt = (v: number) => {
+    if (!v) return "$0";
+    if (v >= 1000000) return `$${(v / 1000000).toFixed(1)}M`;
+    if (v >= 1000) return `$${(v / 1000).toFixed(0)}K`;
+    return `$${v}`;
+  };
+
+  const getDialogTitle = () => {
+    switch (dialogType) {
+      case "clients": return `Active Client Partners (${totalClientsCount})`;
+      case "demands": return `Active Client Project Requisitions (${stats.totalDemands})`;
+      case "consultants": return `Active Placed Consultants (${activePlacements})`;
+      case "margin": return `Consultancy Annualized Gross Margin Breakdown (${fmt(totalClientMargin)})`;
+      default: return "";
+    }
+  };
+
   return (
     <div>
       {/* Premium Hero Header */}
@@ -89,7 +131,11 @@ export default function ClientTab() {
 
       {/* KPI Grid */}
       <div className="kpi-grid" style={{ marginBottom: "20px" }}>
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-primary)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => openDialog("clients")}
+          style={{ "--kpi-color": "var(--color-primary)", cursor: "pointer" } as React.CSSProperties}
+        >
           <IconBuilding className="premium-kpi-icon" size={44} />
           <div className="kpi-label">Active Clients</div>
           <div className="kpi-val">{totalClientsCount}</div>
@@ -98,7 +144,11 @@ export default function ClientTab() {
           </div>
         </div>
 
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-purple)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => openDialog("demands")}
+          style={{ "--kpi-color": "var(--color-purple)", cursor: "pointer" } as React.CSSProperties}
+        >
           <IconBriefcase className="premium-kpi-icon" size={44} />
           <div className="kpi-label">Client Projects Active</div>
           <div className="kpi-val" style={{ color: "var(--color-purple)" }}>{stats.totalDemands}</div>
@@ -107,7 +157,11 @@ export default function ClientTab() {
           </div>
         </div>
 
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-success)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => openDialog("consultants")}
+          style={{ "--kpi-color": "var(--color-success)", cursor: "pointer" } as React.CSSProperties}
+        >
           <IconUsers className="premium-kpi-icon" size={44} />
           <div className="kpi-label">Placed Consultants</div>
           <div className="kpi-val" style={{ color: "var(--color-success-dark)" }}>{activePlacements}</div>
@@ -116,7 +170,11 @@ export default function ClientTab() {
           </div>
         </div>
 
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-warning)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => openDialog("margin")}
+          style={{ "--kpi-color": "var(--color-warning)", cursor: "pointer" } as React.CSSProperties}
+        >
           <IconCoins className="premium-kpi-icon" size={44} />
           <div className="kpi-label">Consultancy Gross Margin</div>
           <div className="kpi-val" style={{ color: "var(--color-warning-dark)" }}>
@@ -254,6 +312,153 @@ export default function ClientTab() {
           </table>
         </div>
       </div>
+
+      {/* Premium Popout Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="custom-dialog-content">
+          <DialogHeader className="custom-dialog-header">
+            <DialogTitle>{getDialogTitle()}</DialogTitle>
+          </DialogHeader>
+          <div className="custom-dialog-body" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+            
+            {dialogType === "clients" && (
+              <div>
+                {stats.allClients && stats.allClients.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No client partners registered.</div>
+                ) : (
+                  stats.allClients.map((client: any, index: number) => (
+                    <div key={client.id} className="popup-row">
+                      <div className="popup-avatar" style={{ background: COLORS[index % COLORS.length] + "15", color: COLORS[index % COLORS.length] }}>
+                        {client.name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="popup-info">
+                        <div className="popup-title" style={{ fontSize: "14px", fontWeight: "600" }}>{client.name}</div>
+                        <div className="popup-sub" style={{ fontSize: "11px", display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
+                          <span>Industry: <strong>{client.industry || "General Tech"}</strong></span>
+                          <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
+                          <span>Contact: <strong>{client.contact || "N/A"}</strong></span>
+                          {client.email && (
+                            <>
+                              <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
+                              <span>{client.email}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="popup-stat" style={{ textAlign: "right", minWidth: "100px" }}>
+                        <span className="popup-stat-val" style={{ color: "var(--color-primary)", fontSize: "13px", fontWeight: "700" }}>
+                          {client.hiresCount} Placed
+                        </span>
+                        <span className="popup-stat-label">{client.demandsCount} Requisitions</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {dialogType === "demands" && (
+              <div>
+                {loadingDemands ? (
+                  <div style={{ display: "flex", justifyContent: "center", padding: "32px" }}>
+                    <div className="spinner" />
+                  </div>
+                ) : allDemandsList.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No project demands found.</div>
+                ) : (
+                  allDemandsList.filter((d: any) => d.status === "OPEN" || d.status === "IN_PROGRESS").map((demand: any) => (
+                    <div key={demand.id} className="popup-row">
+                      <div className="popup-avatar" style={{ background: "var(--color-purple-light)", color: "var(--color-purple)" }}>
+                        <IconBriefcase size={18} />
+                      </div>
+                      <div className="popup-info">
+                        <div className="popup-title" style={{ fontSize: "14px", fontWeight: "600" }}>{demand.title}</div>
+                        <div className="popup-sub" style={{ fontSize: "11px", display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
+                          <span>Client: <strong>{demand.client?.name || "N/A"}</strong></span>
+                          <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
+                          <span>Skills: <strong>{demand.requiredSkills}</strong></span>
+                        </div>
+                      </div>
+                      <div className="popup-stat" style={{ textAlign: "right", minWidth: "120px" }}>
+                        <span className="popup-stat-val" style={{ fontSize: "13px", fontWeight: "700" }}>
+                          ${demand.rateMin}-${demand.rateMax}/hr
+                        </span>
+                        <span className={`tag ${demand.priority === "HIGH" ? "tag-red" : demand.priority === "MEDIUM" ? "tag-orange" : "tag-blue"}`} style={{ display: "inline-block", marginTop: "4px", fontSize: "9px" }}>
+                          {demand.priority}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {dialogType === "consultants" && (
+              <div>
+                {!stats.allHires || stats.allHires.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No active placements.</div>
+                ) : (
+                  stats.allHires.map((hire: any, index: number) => (
+                    <div key={hire.id} className="popup-row">
+                      <div className="popup-avatar" style={{ background: "var(--color-success-light)", color: "var(--color-success-dark)" }}>
+                        {hire.candidateName.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="popup-info">
+                        <div className="popup-title" style={{ fontSize: "14px", fontWeight: "600" }}>{hire.candidateName}</div>
+                        <div className="popup-sub" style={{ fontSize: "11px", marginTop: "2px" }}>
+                          Placed at <strong>{hire.clientName}</strong> for <strong>{hire.demandTitle}</strong>
+                          <span style={{ color: "var(--color-border-tertiary)", margin: "0 6px" }}>•</span>
+                          Source: {hire.vendorName}
+                        </div>
+                      </div>
+                      <div className="popup-stat" style={{ textAlign: "right", minWidth: "110px" }}>
+                        <span className="popup-stat-val" style={{ color: "var(--color-success-dark)", fontSize: "13px", fontWeight: "700" }}>
+                          {fmt(hire.projectedMargin || 0)}
+                        </span>
+                        <span className="popup-stat-label">Projected Margin</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {dialogType === "margin" && (
+              <div>
+                {!stats.marginByClient || stats.marginByClient.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No active margins accrued.</div>
+                ) : (
+                  stats.marginByClient.map((marginItem: any, index: number) => {
+                    const clientDetails = stats.allClients?.find(c => c.id === marginItem.clientId);
+                    return (
+                      <div key={marginItem.clientId} className="popup-row">
+                        <div className="popup-avatar" style={{ background: COLORS[index % COLORS.length] + "15", color: COLORS[index % COLORS.length] }}>
+                          {marginItem.clientName.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div className="popup-info">
+                          <div className="popup-title" style={{ fontSize: "14px", fontWeight: "600" }}>{marginItem.clientName}</div>
+                          <div className="popup-sub" style={{ fontSize: "11px", marginTop: "2px" }}>
+                            {clientDetails?.industry || "Enterprise Partner"}
+                            <span style={{ color: "var(--color-border-tertiary)", margin: "0 6px" }}>•</span>
+                            {clientDetails?.hiresCount || 0} active placements
+                          </div>
+                        </div>
+                        <div className="popup-stat" style={{ textAlign: "right", minWidth: "120px" }}>
+                          <span className="popup-stat-val" style={{ color: "var(--color-warning-dark)", fontSize: "14px", fontWeight: "700" }}>
+                            {fmt(marginItem.margin)}
+                          </span>
+                          <span className="popup-stat-label">Projected Margin</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
