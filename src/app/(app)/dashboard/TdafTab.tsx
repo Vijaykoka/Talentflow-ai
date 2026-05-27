@@ -576,7 +576,7 @@ TalentFlow AI Core`;
                         const skills = safeParseSkills(demand.requiredSkills);
                         const assignedRec = selectedRecruiter[demand.id] || "Assigned internally";
                         return (
-                          <tr key={demand.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="premium-interactive-row">
+                          <tr key={demand.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="tdaf-table-row">
                             
                             {/* Role Title and skills */}
                             <td style={{ padding: "14px 10px", maxWidth: "250px" }}>
@@ -809,7 +809,7 @@ TalentFlow AI Core`;
                               : "Cross-train in Fullstack JavaScript frameworks";
 
                           return (
-                            <tr key={candidate.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="premium-interactive-row">
+                            <tr key={candidate.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="tdaf-table-row">
                               <td style={{ padding: "12px 8px", fontWeight: 700, color: "var(--color-text-primary)" }}>{candidate.name}</td>
                               <td style={{ padding: "12px 8px" }}>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
@@ -907,7 +907,7 @@ TalentFlow AI Core`;
                         .map((vendor: any) => {
                           const starsCount = Math.min(5, Math.ceil(vendor.performanceScore / 20));
                           return (
-                            <tr key={vendor.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="premium-interactive-row">
+                            <tr key={vendor.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="tdaf-table-row">
                               <td style={{ padding: "14px 10px" }}>
                                 <div style={{ fontWeight: 700, color: "var(--color-text-primary)" }}>{vendor.name}</div>
                                 <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", marginTop: "2px" }}>{vendor.email || "No contact verified"}</div>
@@ -1035,7 +1035,7 @@ TalentFlow AI Core`;
                       ].map((item: any) => {
                         const checks = onboardingChecks[item.id] || { contractSigned: false, bgCheck: false, hardwareShipped: false, welcomeCall: false };
                         return (
-                          <tr key={item.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="premium-interactive-row">
+                          <tr key={item.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }} className="tdaf-table-row">
                             <td style={{ padding: "12px 8px", fontWeight: 700, color: "var(--color-text-primary)" }}>{item.name}</td>
                             <td style={{ padding: "12px 8px", fontWeight: 600, color: "var(--color-primary)" }}>{item.client}</td>
                             
@@ -1416,6 +1416,14 @@ TalentFlow AI Core`;
         .premium-interactive-row:hover {
           background: rgba(59, 130, 246, 0.03);
           transform: translateX(2px);
+        }
+
+        .tdaf-table-row {
+          transition: background-color 0.15s ease;
+        }
+
+        .tdaf-table-row:hover {
+          background: rgba(59, 130, 246, 0.04) !important;
         }
 
         .action-btn-match:hover {
