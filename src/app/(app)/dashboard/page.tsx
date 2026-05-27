@@ -33,6 +33,8 @@ import {
 } from "recharts";
 import PipelineTab from "./PipelineTab";
 import SkillGapTab from "./SkillGapTab";
+import LocationMatchTab from "./LocationMatchTab";
+import ClientTab from "./ClientTab";
 import ActivityTab from "./ActivityTab";
 import CreateDemandTab from "./CreateDemandTab";
 import InterviewFeedbackTab from "./InterviewFeedbackTab";
@@ -107,9 +109,11 @@ export default function DashboardPage() {
       {activeTab === "matching" && <MatchingTab />}
       {activeTab === "margin" && <MarginTab />}
       {activeTab === "vendor" && <VendorTab />}
+      {activeTab === "client" && <ClientTab />}
       {activeTab === "projects" && <ProjectsTab />}
       {activeTab === "pipeline" && <PipelineTab />}
       {activeTab === "skillgap" && <SkillGapTab />}
+      {activeTab === "locationmatch" && <LocationMatchTab />}
       {activeTab === "activity" && <ActivityTab />}
       {activeTab === "createDemand" && <CreateDemandTab />}
       {activeTab === "feedback" && <InterviewFeedbackTab />}
@@ -349,30 +353,49 @@ function DemandTab() {
                 {openDemandsList.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No open demands found.</div>
                 ) : (
-                  openDemandsList.map(demand => (
-                    <div key={demand.id} className="popup-row">
-                      <div
-                        className="popup-avatar small"
-                        style={{ background: demand.priority === "HIGH" ? "var(--color-error)" : demand.priority === "MEDIUM" ? "var(--color-warning)" : "var(--color-success)" }}
-                      />
-                      <div className="popup-info">
-                        <div className="popup-title">{demand.title}</div>
-                        <div className="popup-sub">
-                          <IconBuildingStore size={12} /> {demand.vendor?.name || "Internal Direct"}
-                          <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
-                          {demand.location || "Remote / Hybrid"}
+                  openDemandsList.map(demand => {
+                    const atMatch = demand.title.match(/\s+at\s+([A-Za-z0-9\s]+)$/i);
+                    const extractedClient = atMatch ? atMatch[1].trim() : null;
+                    const clientName = demand.client?.name || extractedClient || "Google";
+                    const cleanTitle = demand.title.replace(/\s+at\s+[A-Za-z0-9\s]+$/i, "").trim();
+                    const displayTitle = `${cleanTitle} for ${clientName} client`;
+
+                    const clientMin = demand.rateMin;
+                    const clientMax = demand.rateMax;
+                    const resourceMin = Math.round(clientMin * 0.7);
+                    const resourceMax = Math.round(clientMax * 0.7);
+
+                    return (
+                      <div key={demand.id} className="popup-row" style={{ padding: "12px 16px" }}>
+                        <div
+                          className="popup-avatar small"
+                          style={{ background: demand.priority === "HIGH" ? "var(--color-error)" : demand.priority === "MEDIUM" ? "var(--color-warning)" : "var(--color-success)", marginTop: "4px" }}
+                        />
+                        <div className="popup-info" style={{ flex: 1 }}>
+                          <div className="popup-title" style={{ fontWeight: 600, fontSize: "13px" }}>{displayTitle}</div>
+                          <div className="popup-sub" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", marginTop: "2px" }}>
+                            <IconBuildingStore size={12} /> <span>{demand.vendor?.name || "Internal Direct"}</span>
+                            <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
+                            <span>{demand.location || "Remote / Hybrid"}</span>
+                          </div>
+                        </div>
+                        <div className="popup-stat" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", minWidth: "180px", paddingLeft: "12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span className="popup-tag" style={{ background: demand.priority === "HIGH" ? "var(--color-red-light)" : demand.priority === "MEDIUM" ? "var(--color-amber-light)" : "var(--color-green-light)", color: demand.priority === "HIGH" ? "var(--color-error-dark)" : demand.priority === "MEDIUM" ? "var(--color-warning-dark)" : "var(--color-success-dark)", fontSize: "10px", padding: "1px 6px" }}>
+                              {demand.priority === "HIGH" ? "High" : demand.priority === "MEDIUM" ? "Medium" : "Low"}
+                            </span>
+                            <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-text-tertiary)" }}>Billing:</span>
+                            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-primary)" }}>
+                              ${clientMin}-${clientMax}/hr
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-text-secondary)" }}>
+                            Resource Pay: <span style={{ color: "var(--color-success-dark)", fontWeight: 600 }}>${resourceMin}-${resourceMax}/hr</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="popup-stat" style={{ flexDirection: "row", alignItems: "center", gap: "12px" }}>
-                        <span className="popup-tag" style={{ background: demand.priority === "HIGH" ? "var(--color-red-light)" : demand.priority === "MEDIUM" ? "var(--color-amber-light)" : "var(--color-green-light)", color: demand.priority === "HIGH" ? "var(--color-error-dark)" : demand.priority === "MEDIUM" ? "var(--color-warning-dark)" : "var(--color-success-dark)" }}>
-                          {demand.priority === "HIGH" ? "High" : demand.priority === "MEDIUM" ? "Medium" : "Low"}
-                        </span>
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-secondary)", minWidth: "80px", textAlign: "right" }}>
-                          ${demand.rateMin}-${demand.rateMax}/hr
-                        </span>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}

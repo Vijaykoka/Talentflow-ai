@@ -3,20 +3,40 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding database with demo suggested inputs...");
+  console.log("Seeding database with dev suggestions...");
 
-  // 1. Add Vendor
+  // Clear existing
+  await prisma.jobCandidateMatch.deleteMany();
+  await prisma.hire.deleteMany();
+  await prisma.resume.deleteMany();
+  await prisma.candidate.deleteMany();
+  await prisma.demand.deleteMany();
+  await prisma.vendor.deleteMany();
+  await prisma.client.deleteMany();
+
+  // 1. Add Client
+  const client = await prisma.client.create({
+    data: {
+      name: "Google Inc",
+      industry: "Technology",
+      contact: "Sundar Pichai",
+      email: "sundar@google.com",
+    }
+  });
+  console.log("Added Client:", client.name);
+
+  // 2. Add Vendor
   const vendor = await prisma.vendor.create({
     data: {
       name: "TechTalent Partners",
       contact: "Sarah Jenkins",
       email: "sarah@techtalent.example.com",
-      commissionRate: 10,
+      commissionRate: 0.1,
     }
   });
   console.log("Added Vendor:", vendor.name);
 
-  // 2. Add Candidate
+  // 3. Add Candidate
   const candidate = await prisma.candidate.create({
     data: {
       name: "Alex Rivera",
@@ -28,14 +48,16 @@ async function main() {
       extractedSkills: "React, TypeScript, Node.js, Next.js, AWS",
       status: "AVAILABLE",
       hotTalent: true,
+      location: "San Francisco, CA",
+      vendorId: vendor.id, // Sourced from vendor
     }
   });
   console.log("Added Candidate:", candidate.name);
 
-  // 3. Add Demand
+  // 4. Add Demand
   const demand = await prisma.demand.create({
     data: {
-      title: "Senior Full Stack Developer",
+      title: "Senior Full Stack Developer at Google",
       location: "Remote",
       jdText: "We need a senior developer to lead our migration to Next.js. Must have deep experience with React ecosystems, server-side rendering, and scalable backend services.",
       requiredSkills: "React, TypeScript, Node.js, Next.js",
@@ -43,11 +65,13 @@ async function main() {
       rateMax: 150,
       priority: "HIGH",
       status: "OPEN",
+      clientId: client.id,
+      vendorId: vendor.id,
     }
   });
   console.log("Added Demand:", demand.title);
 
-  console.log("Seeding complete! You can now use these records to run AI Matching and Record Hires in the UI.");
+  console.log("Seeding complete! Dev database ready.");
 }
 
 main()

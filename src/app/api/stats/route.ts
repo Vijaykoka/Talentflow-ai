@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Candidate, Demand, Hire, Vendor } from "@prisma/client";
+import { Candidate, Demand, Hire, Vendor, Client } from "@prisma/client";
 
 export async function GET() {
   try {
-    const [demands, candidates, hires, vendors] = await Promise.all([
-      prisma.demand.findMany({ include: { vendor: true } }),
-      prisma.candidate.findMany({ include: { resumes: true } }),
+    const [demands, candidates, hires, vendors, clients] = await Promise.all([
+      prisma.demand.findMany({ include: { client: true, vendor: true } }),
+      prisma.candidate.findMany({ include: { resumes: true, vendor: true } }),
       prisma.hire.findMany({
-        include: { demand: true, candidate: true, vendor: true },
+        include: { demand: true, candidate: true, client: true, vendor: true },
         orderBy: { startDate: "desc" },
         take: 50
       }),
@@ -17,6 +17,12 @@ export async function GET() {
           _count: { select: { demands: true, hires: true } },
         },
         orderBy: { performanceScore: "desc" },
+      }),
+      prisma.client.findMany({
+        include: {
+          _count: { select: { demands: true, hires: true } },
+        },
+        orderBy: { name: "asc" },
       }),
     ]);
 
@@ -38,7 +44,18 @@ export async function GET() {
     const avgTimeToFill = computeAvgTimeToFill(demands.filter(d => d.status === "FILLED"));
 
     const marginByVendor = computeMarginByVendor(vendors, hires);
+    const marginByClient = computeMarginByClient(clients, hires);
     const submitToHireRates = computeSubmitToHireRates(vendors, demands, hires);
+
+    const topClients = clients.slice(0, 5).map(c => ({
+      id: c.id,
+      name: c.name,
+      contact: c.contact,
+      email: c.email,
+      industry: c.industry,
+      hiresCount: c._count?.hires || 0,
+      demandsCount: c._count?.demands || 0,
+    })).sort((a, b) => b.hiresCount - a.hiresCount);
 
     return NextResponse.json({
       totalDemands: demands.length,
@@ -48,6 +65,7 @@ export async function GET() {
       availableNow: availableCandidates.length,
       totalHires: hires.length,
       totalVendors: vendors.length,
+      totalClients: clients.length,
       projectedMargin: totalProjectedMargin,
       avgMonthlyMargin: hires.length > 0 ? totalProjectedMargin / hires.length : 0,
       revenueAtRisk,
@@ -69,7 +87,8 @@ export async function GET() {
         id: h.id,
         candidateName: h.candidate?.name || "Unknown",
         demandTitle: h.demand?.title || "Unknown",
-        vendorName: h.vendor?.name || "Unknown",
+        clientName: h.client?.name || "Unknown",
+        vendorName: h.vendor?.name || "Bench (Internal)",
         hiredRate: h.hiredRate,
         projectedMargin: h.projectedMargin12m,
         startDate: h.startDate,
@@ -86,8 +105,10 @@ export async function GET() {
         hiresCount: v._count?.hires || 0,
         demandsCount: v._count?.demands || 0,
       })),
+      topClients,
       skillDistribution,
       marginByVendor,
+      marginByClient,
       hotDemands: openDemands
         .filter(d => d.priority === "HIGH" || d.priority === "MEDIUM")
         .slice(0, 7)
@@ -98,6 +119,7 @@ export async function GET() {
           daysAging: Math.floor((Date.now() - new Date(d.createdAt).getTime()) / (1000 * 60 * 60 * 24)),
           status: d.status,
           location: d.location,
+          clientName: d.client?.name || "Unknown",
         })),
       hotTalents: hotTalents.slice(0, 10).map(c => {
         const skills = parseSkills(c.extractedSkills);
@@ -112,9 +134,10 @@ export async function GET() {
         id: h.id,
         candidateName: h.candidate?.name || "Unknown",
         demandTitle: h.demand?.title || "Unknown",
+        clientName: h.client?.name || "Unknown",
         hiredRate: h.hiredRate,
         hiringCost: h.hiringCost,
-        vendorName: h.vendor?.name || "Unknown",
+        vendorName: h.vendor?.name || "Bench (Internal)",
         startDate: h.startDate,
         projectedMargin: h.projectedMargin12m,
         status: h.status,
@@ -130,6 +153,15 @@ export async function GET() {
         avgFillDays: getVendorAvgFillDays(v.id, demands),
         hiresCount: v._count?.hires || 0,
         demandsCount: v._count?.demands || 0,
+      })),
+      allClients: clients.map(c => ({
+        id: c.id,
+        name: c.name,
+        contact: c.contact,
+        email: c.email,
+        industry: c.industry,
+        hiresCount: c._count?.hires || 0,
+        demandsCount: c._count?.demands || 0,
       })),
       matchesToday: Math.floor(Math.random() * 50) + 100,
       excellentFits: Math.floor(Math.random() * 20) + 15,
@@ -198,6 +230,21 @@ function computeMarginByVendor(vendors: Vendor[], hires: Hire[]) {
     vendorName: v.name,
     margin: vendorMargins[v.id] || 0,
   })).filter(v => v.margin > 0).sort((a, b) => b.margin - a.margin);
+}
+
+function computeMarginByClient(clients: Client[], hires: Hire[]) {
+  const clientMargins: Record<string, number> = {};
+  for (const hire of hires) {
+    if (hire.clientId) {
+      clientMargins[hire.clientId] = (clientMargins[hire.clientId] || 0) + (hire.projectedMargin12m || 0);
+    }
+  }
+
+  return clients.map(c => ({
+    clientId: c.id,
+    clientName: c.name,
+    margin: clientMargins[c.id] || 0,
+  })).filter(c => c.margin > 0).sort((a, b) => b.margin - a.margin);
 }
 
 function computeSubmitToHireRates(vendors: Vendor[], demands: Demand[], hires: Hire[]) {

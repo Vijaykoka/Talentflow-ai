@@ -77,6 +77,12 @@ const LAST_NAMES = [
   "Sharma", "Yamamoto", "Johansson", "Petrov", "Okonkwo", "Ivanova",
 ];
 
+const CLIENT_NAMES = [
+  "Google", "Microsoft", "Amazon", "Meta", "Apple", "Netflix", "Tesla",
+  "Uber", "Airbnb", "Stripe", "Shopify", "Salesforce", "Adobe", "Oracle",
+  "IBM", "Intel", "Cisco", "Slack", "Zoom", "Snowflake", "Datadog"
+];
+
 const VENDOR_NAMES = [
   "TechRecruit Pro", "Elite Talent Hub", "CodeFinders Inc", "DevHire Solutions",
   "TalentBridge", "Silicon Valley Recruiters", "TechPros Agency",
@@ -91,14 +97,6 @@ const LOCATIONS = [
   "Los Angeles, CA", "Portland, OR", "San Diego, CA", "Phoenix, AZ",
   "Dallas, TX", "Houston, TX", "Philadelphia, PA", "Washington, DC",
   "Minneapolis, MN", "Raleigh, NC", "Nashville, TN", "Salt Lake City, UT",
-];
-
-const COMPANIES = [
-  "Google", "Microsoft", "Amazon", "Meta", "Apple", "Netflix", "Tesla",
-  "Uber", "Airbnb", "Stripe", "Shopify", "Salesforce", "Adobe", "Oracle",
-  "IBM", "Intel", "Cisco", "VMware", "Slack", "Zoom", "Snowflake",
-  "Datadog", "Cloudflare", "Twilio", "Square", "PayPal", "Coinbase",
-  "Instagram", "LinkedIn", "Pinterest", "Spotify", "Dropbox", "Atlassian",
 ];
 
 function randomSkills(count: number): string {
@@ -141,7 +139,6 @@ function pickRandom<T>(arr: T[], count: number): T[] {
   return shuffled.slice(0, count);
 }
 
-// Skill clusters for different roles
 const SKILL_CLUSTERS: Record<string, string[]> = {
   "Senior Full Stack Developer": ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS", "GraphQL", "Docker", "Next.js"],
   "DevOps Engineer": ["AWS", "Docker", "Kubernetes", "Terraform", "CI/CD", "Linux", "Bash", "Git"],
@@ -168,27 +165,45 @@ async function seed() {
   await prisma.candidate.deleteMany();
   await prisma.demand.deleteMany();
   await prisma.vendor.deleteMany();
+  await prisma.client.deleteMany();
 
-   console.log("Creating vendors...");
-   const vendors = await Promise.all(
-     VENDOR_NAMES.map((name) => {
-       return prisma.vendor.create({
-         data: {
-           name,
-           contact: `${randomFrom(FIRST_NAMES)} ${randomFrom(LAST_NAMES)}`,
-           email: `info@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
-           commissionRate: randomFloat(0.05, 0.18),
-           performanceScore: randomFloat(3.0, 5.0),
-         },
-       });
-     })
-   );
+  console.log("Creating 15 Clients...");
+  const clients = await Promise.all(
+    CLIENT_NAMES.slice(0, 15).map((name) => {
+      const first = randomFrom(FIRST_NAMES);
+      const last = randomFrom(LAST_NAMES);
+      return prisma.client.create({
+        data: {
+          name,
+          industry: randomFrom(["Tech B2B SaaS", "E-Commerce", "Finance", "Cloud Computing", "AI Research", "Transportation"]),
+          contact: `${first} ${last}`,
+          email: `contact@${name.toLowerCase()}.example.com`,
+        },
+      });
+    })
+  );
 
-  console.log("Creating 80 demands...");
+  console.log("Creating 15 Vendors...");
+  const vendors = await Promise.all(
+    VENDOR_NAMES.map((name) => {
+      return prisma.vendor.create({
+        data: {
+          name,
+          contact: `${randomFrom(FIRST_NAMES)} ${randomFrom(LAST_NAMES)}`,
+          email: `info@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+          commissionRate: randomFloat(0.05, 0.18),
+          performanceScore: randomFloat(3.0, 5.0),
+        },
+      });
+    })
+  );
+
+  console.log("Creating 80 client demands...");
   const demands = [];
   for (let i = 0; i < 80; i++) {
     const title = DEMAND_TITLES[i % DEMAND_TITLES.length];
     const clusterSkills = SKILL_CLUSTERS[title] || [];
+    // Clients billing rate ceilings
     const rateMin = title.includes("Senior") || title.includes("Lead") || title.includes("Principal") || title.includes("Architect") || title.includes("Manager") || title.includes("VP") || title.includes("Staff")
       ? randomBetween(120, 220)
       : randomBetween(60, 140);
@@ -199,23 +214,26 @@ async function seed() {
     else if (i < 40) statusWeights.push(...Array(3).fill("OPEN"), ...Array(2).fill("IN_PROGRESS"), "INTERVIEW", "OFFER", "FILLED");
     else statusWeights.push("OPEN", "IN_PROGRESS", "INTERVIEW", "OFFER", "FILLED", "FILLED");
 
+    const client = randomFrom(clients);
+
     const demand = await prisma.demand.create({
       data: {
-        title: i < 30 ? title : `${title} @ ${randomFrom(COMPANIES)}`,
-        jdText: JD_TEMPLATES[title] || `We are looking for a talented ${title} to join our growing team. You will work on challenging problems with a world-class team.`,
+        title: `${title} at ${client.name}`,
+        jdText: JD_TEMPLATES[title] || `We are looking for a talented ${title} to join our growing client project team. You will work on challenging problems with a world-class team.`,
         requiredSkills: randomSkillsWeighted(4, 9, clusterSkills),
         rateMin,
         rateMax: rateMin + randomBetween(20, 80),
         location: isRemote ? "Remote" : randomFrom(LOCATIONS),
         priority,
         status: randomFrom(statusWeights),
-        vendorId: Math.random() > 0.35 ? randomFrom(vendors).id : null,
+        clientId: client.id,
+        vendorId: Math.random() > 0.4 ? randomFrom(vendors).id : null, // Optional sourcing vendor partner
       },
     });
     demands.push(demand);
   }
 
-  console.log("Creating 100 candidates...");
+  console.log("Creating 100 candidates (40% Bench, 60% Vendor sourced)...");
   const candidates = [];
   for (let i = 0; i < 100; i++) {
     const firstName = randomFrom(FIRST_NAMES);
@@ -225,6 +243,9 @@ async function seed() {
     const isHotRare = experience >= 5 && Math.random() > 0.85;
     const statusWeights = ["AVAILABLE", "AVAILABLE", "AVAILABLE", "AVAILABLE", "INTERVIEWING", "INTERVIEWING", "OFFERED"];
 
+    const isRemote = Math.random() > 0.4;
+    const fromVendor = Math.random() > 0.4;
+
     const candidate = await prisma.candidate.create({
       data: {
         name: `${firstName} ${lastName}`,
@@ -232,10 +253,12 @@ async function seed() {
         phone: `+1-${randomBetween(200, 999)}-${randomBetween(100, 999)}-${randomBetween(1000, 9999)}`,
         extractedSkills: randomSkills(randomBetween(4, 12)),
         experienceYears: experience,
-        currentCtc: experience * randomBetween(8000, 18000),
-        expectedCtc: experience * randomBetween(9000, 22000),
+        currentCtc: experience * randomBetween(8000, 18000), // Consultant Pay Rate minimum
+        expectedCtc: experience * randomBetween(9000, 22000),  // Consultant Pay Rate expected
         status: randomFrom(statusWeights),
         hotTalent: isHot || isHotRare,
+        location: isRemote ? "Remote" : randomFrom(LOCATIONS),
+        vendorId: fromVendor ? randomFrom(vendors).id : null, // null means Internal Bench Candidate
       },
     });
     candidates.push(candidate);
@@ -246,7 +269,7 @@ async function seed() {
   for (const candidate of candidates) {
     if (Math.random() > 0.4) {
       const skills = JSON.parse(candidate.extractedSkills) as string[];
-      const companies = pickRandom(COMPANIES, randomBetween(1, 4));
+      const companies = pickRandom(CLIENT_NAMES, randomBetween(1, 4));
       const eduDegrees = ["Bachelor's in Computer Science", "Master's in Computer Science", "Bachelor's in Information Technology", "Master's in Data Science", "PhD in Computer Science", "Bachelor's in Electrical Engineering"];
       
       await prisma.resume.create({
@@ -256,7 +279,7 @@ async function seed() {
           parsedText: `Professional Summary: Experienced professional with ${candidate.experienceYears} years in software development and technology.`,
           extractedSkills: candidate.extractedSkills,
           education: JSON.stringify(pickRandom(eduDegrees, randomBetween(1, 2)).map(d => ({
-            institution: randomFrom(COMPANIES).includes("Tech") ? randomFrom(COMPANIES) + " University" : randomFrom(COMPANIES) + " University",
+            institution: randomFrom(CLIENT_NAMES) + " University",
             degree: d,
             year: String(2020 - randomBetween(0, 15)),
           }))),
@@ -317,7 +340,7 @@ async function seed() {
   }
   console.log(`Created ${matchCount} matches`);
 
-  console.log("Creating hires...");
+  console.log("Creating 25 placements (hires) with billing rate margins...");
   let hireCount = 0;
   const hireStatusWeights = ["ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE", "COMPLETED", "COMPLETED"];
   const usedPairs = new Set<string>();
@@ -329,18 +352,20 @@ async function seed() {
     if (usedPairs.has(pairKey)) continue;
     usedPairs.add(pairKey);
 
-    const rate = demand.rateMin + randomBetween(10, 40);
-    const hiringCost = randomBetween(3000, 15000);
-    const monthlyMargin = (rate * 1.4 - rate * 0.7) * 160 - (hiringCost / 12);
+    const billRate = demand.rateMin + randomBetween(10, 40); // Client billing rate
+    const payRate = billRate * randomFloat(0.6, 0.75);       // Vendor pay rate / direct pay rate
+    const hiringCost = randomBetween(2000, 8000);            // One-off onboarding cost
+    const monthlyMargin = (billRate - payRate) * 160 - (hiringCost / 12);
     const daysAgo = randomBetween(1, 365);
 
     await prisma.hire.create({
       data: {
         demandId: demand.id,
         candidateId: candidate.id,
-        vendorId: Math.random() > 0.4 ? randomFrom(vendors).id : null,
-        hiredRate: rate,
-        hiringCost,
+        clientId: demand.clientId,
+        vendorId: candidate.vendorId, // Null if sourced from Internal Bench
+        hiredRate: billRate,
+        hiringCost: payRate,          // payRate stored in hiringCost column
         startDate: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
         projectedMargin12m: Math.round(monthlyMargin * 12 * 100) / 100,
         status: randomFrom(hireStatusWeights),
@@ -351,6 +376,7 @@ async function seed() {
   console.log(`Created ${hireCount} hires`);
 
   const stats = {
+    clients: clients.length,
     vendors: vendors.length,
     demands: demands.length,
     candidates: candidates.length,
@@ -364,12 +390,13 @@ async function seed() {
   console.log("\n╔══════════════════════════════╗");
   console.log("║     Seed Complete!           ║");
   console.log("╠══════════════════════════════╣");
+  console.log(`║ Clients:    ${String(stats.clients).padStart(5)}           ║`);
   console.log(`║ Vendors:    ${String(stats.vendors).padStart(5)}           ║`);
   console.log(`║ Demands:    ${String(stats.demands).padStart(5)}           ║`);
   console.log(`║ Candidates: ${String(stats.candidates).padStart(5)}           ║`);
   console.log(`║ Resumes:    ${String(stats.resumes).padStart(5)}           ║`);
   console.log(`║ Matches:    ${String(stats.matches).padStart(5)}           ║`);
-  console.log(`║ Hires:      ${String(stats.hires).padStart(5)}           ║`);
+  console.log(`║ Placements: ${String(stats.hires).padStart(5)}           ║`);
   console.log("╠══════════════════════════════╣");
   console.log(`║ Total:      ${String(total).padStart(5)}           ║`);
   console.log("╚══════════════════════════════╝");

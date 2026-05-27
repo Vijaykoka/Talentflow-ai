@@ -9,6 +9,7 @@ export async function GET() {
       include: {
         demand: true,
         candidate: true,
+        client: true,
         vendor: true,
       },
       orderBy: { createdAt: "desc" },
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     console.log("Creating hire with body:", body);
-    const { demandId, candidateId, vendorId, hiredRate, hiringCost, startDate } = body;
+    const { demandId, candidateId, clientId, vendorId, hiredRate, hiringCost, startDate } = body;
 
     const forecast = calculateMarginForecast(hiredRate, hiredRate * 0.7, hiringCost || 0, true);
 
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
       data: {
         demandId,
         candidateId,
+        clientId: clientId || null,
         vendorId: vendorId || null,
         hiredRate,
         hiringCost: hiringCost || 0,
@@ -46,6 +48,8 @@ export async function POST(request: Request) {
       include: {
         demand: true,
         candidate: true,
+        client: true,
+        vendor: true,
       },
     });
 

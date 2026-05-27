@@ -43,12 +43,14 @@ export default function HiresPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const selectedDemand = demands.find(d => d.id === formData.demandId);
     await fetch("/api/hires", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         demandId: formData.demandId, candidateId: formData.candidateId,
-        vendorId: formData.vendorId || null, hiredRate: parseFloat(formData.hiredRate),
+        clientId: selectedDemand?.clientId || null,
+        vendorId: formData.vendorId || selectedDemand?.vendorId || null, hiredRate: parseFloat(formData.hiredRate),
         hiringCost: parseFloat(formData.hiringCost) || 0, startDate: formData.startDate,
       }),
     });
@@ -92,29 +94,42 @@ export default function HiresPage() {
                 <Select 
                   value={formData.demandId} 
                   onValueChange={v => setFormData({...formData, demandId: v!})}
-                  items={demands.filter(d => d.status !== "FILLED").map(d => ({ label: d.title, value: d.id }))}
                 >
                   <SelectTrigger><SelectValue placeholder="Select demand" /></SelectTrigger>
                   <SelectContent>{demands.filter(d => d.status !== "FILLED").map(d => (<SelectItem key={d.id} value={d.id}>{d.title}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
+              {demands.find(d => d.id === formData.demandId) && (
+                <div style={{ padding: "8px 12px", background: "var(--color-background-secondary)", borderRadius: "var(--radius)", fontSize: "12px", border: "0.5px solid var(--color-border-tertiary)" }}>
+                  <div style={{ color: "var(--color-text-secondary)", fontSize: "10px" }}>Target Client Account:</div>
+                  <div style={{ fontWeight: 600, color: "var(--color-text-primary)", fontSize: "12px", marginTop: "2px" }}>
+                    {demands.find(d => d.id === formData.demandId)?.client?.name || "None / Internal"}
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label className="text-xs">Candidate</Label>
                 <Select 
                   value={formData.candidateId} 
                   onValueChange={v => setFormData({...formData, candidateId: v!})}
-                  items={candidates.filter(c => c.status !== "HIRED").map(c => ({ label: c.name, value: c.id }))}
                 >
                   <SelectTrigger><SelectValue placeholder="Select candidate" /></SelectTrigger>
                   <SelectContent>{candidates.filter(c => c.status !== "HIRED").map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
+              {candidates.find(c => c.id === formData.candidateId) && (
+                <div style={{ padding: "8px 12px", background: "var(--color-background-secondary)", borderRadius: "var(--radius)", fontSize: "12px", border: "0.5px solid var(--color-border-tertiary)" }}>
+                  <div style={{ color: "var(--color-text-secondary)", fontSize: "10px" }}>Sourcing Supply Source:</div>
+                  <div style={{ fontWeight: 600, color: "var(--color-text-primary)", fontSize: "12px", marginTop: "2px" }}>
+                    {candidates.find(c => c.id === formData.candidateId)?.vendor?.name ? `Vendor subcontractor: ${candidates.find(c => c.id === formData.candidateId).vendor.name}` : "Internal Bench Direct"}
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
-                <Label className="text-xs">Vendor (Optional)</Label>
+                <Label className="text-xs">Vendor (Optional - overrides preferred vendor)</Label>
                 <Select 
                   value={formData.vendorId} 
                   onValueChange={v => setFormData({...formData, vendorId: v ?? ""})}
-                  items={vendors.map(v => ({ label: v.name, value: v.id }))}
                 >
                   <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
                   <SelectContent>{vendors.map(v => (<SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>))}</SelectContent>
@@ -160,7 +175,7 @@ export default function HiresPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
             <thead>
               <tr style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
-                {["Candidate", "Demand", "Rate", "Cost", "Start", "Margin (12M)", "Status"].map(h => (
+                {["Candidate", "Client", "Project Requisition", "Billing Rate", "Vendor Pay Rate", "Start Date", "Margin (12M)", "Status"].map(h => (
                   <th key={h} style={{ textAlign: "left", padding: "8px", color: "var(--color-text-secondary)", fontWeight: 500, fontSize: "11px" }}>{h}</th>
                 ))}
               </tr>
@@ -169,9 +184,17 @@ export default function HiresPage() {
               {hires.map(hire => (
                 <tr key={hire.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
                   <td style={{ padding: "8px", fontWeight: 500, color: "var(--color-text-primary)" }}>{hire.candidate?.name || "-"}</td>
-                  <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>{hire.demand?.title || "-"}</td>
+                  <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>{hire.client?.name || hire.demand?.client?.name || "-"}</td>
+                  <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>
+                    <div style={{ fontWeight: 500, color: "var(--color-text-primary)" }}>{hire.demand?.title || "-"}</div>
+                    <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", marginTop: "2px" }}>
+                      Sourced: {hire.vendor?.name || hire.candidate?.vendor?.name || "Internal Bench"}
+                    </div>
+                  </td>
                   <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>${hire.hiredRate}/hr</td>
-                  <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>{formatCurrency(hire.hiringCost)}</td>
+                  <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>
+                    {hire.hiringCost > 0 ? `$${hire.hiringCost}/hr` : <span style={{ fontStyle: "italic", color: "var(--color-text-tertiary)" }}>No Pay Rate</span>}
+                  </td>
                   <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>{formatDate(hire.startDate)}</td>
                   <td style={{ padding: "8px" }}>
                     <span className="tag tag-green">{formatCurrency(hire.projectedMargin12m || 0)}</span>
@@ -181,7 +204,7 @@ export default function HiresPage() {
               ))}
               {hires.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No hires recorded yet</td>
+                  <td colSpan={8} style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No hires recorded yet</td>
                 </tr>
               )}
             </tbody>

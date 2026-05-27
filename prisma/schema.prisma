@@ -17,6 +17,19 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+model Client {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  industry  String?
+  contact   String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  demands   Demand[]
+  hires     Hire[]
+}
+
 model Vendor {
   id              String   @id @default(uuid())
   name            String
@@ -27,8 +40,9 @@ model Vendor {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  demands Demand[]
-  hires   Hire[]
+  demands    Demand[]
+  hires      Hire[]
+  candidates Candidate[]
 }
 
 model Demand {
@@ -41,10 +55,12 @@ model Demand {
   location      String?
   priority      String   @default("MEDIUM")
   status        String   @default("OPEN")
+  clientId      String?
   vendorId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  client        Client?          @relation(fields: [clientId], references: [id])
   vendor        Vendor?          @relation(fields: [vendorId], references: [id])
   matches       JobCandidateMatch[]
   hires         Hire[]
@@ -65,12 +81,15 @@ model Candidate {
   expectedCtc     Float?
   status          String   @default("AVAILABLE")
   hotTalent       Boolean  @default(false)
+  location        String?
+  vendorId        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  resumes Resume[]
-  matches JobCandidateMatch[]
-  hires   Hire[]
+  vendor        Vendor?          @relation(fields: [vendorId], references: [id])
+  resumes       Resume[]
+  matches       JobCandidateMatch[]
+  hires         Hire[]
 
   @@index([status])
   @@index([hotTalent])
@@ -120,17 +139,17 @@ model InterviewFeedback {
   behavioralScore Int      // 0 to 100
   comments        String
   recommendation  String   // "STRONG_HIRE" | "HIRE" | "NO_HIRE" | "STRONG_NO_HIRE"
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   match           JobCandidateMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
 }
-
 
 model Hire {
   id               String   @id @default(uuid())
   demandId         String
   candidateId      String
+  clientId         String?
   vendorId         String?
   hiredRate        Float
   hiringCost       Float    @default(0)
@@ -142,6 +161,7 @@ model Hire {
 
   demand    Demand    @relation(fields: [demandId], references: [id])
   candidate Candidate @relation(fields: [candidateId], references: [id])
+  client    Client?   @relation(fields: [clientId], references: [id])
   vendor    Vendor?   @relation(fields: [vendorId], references: [id])
 
   @@index([demandId])

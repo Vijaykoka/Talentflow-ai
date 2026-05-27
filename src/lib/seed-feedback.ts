@@ -53,31 +53,25 @@ const FEEDBACK_TEMPLATES = [
 async function seedFeedback() {
   console.log("Seeding Database with Premium Interview Feedbacks...");
 
-  // Get matches where the demand is assigned to a vendor
-  const vendorMatches = await prisma.jobCandidateMatch.findMany({
-    where: {
-      demand: {
-        vendorId: {
-          not: null,
-        },
-      },
-    },
+  // Get all candidate matches
+  const allMatches = await prisma.jobCandidateMatch.findMany({
     include: {
       candidate: true,
       demand: {
         include: {
+          client: true,
           vendor: true,
         },
       },
     },
   });
 
-  if (vendorMatches.length === 0) {
-    console.log("No vendor-associated candidate matches found. Please run matches first!");
+  if (allMatches.length === 0) {
+    console.log("No candidate matches found. Please run matches first!");
     return;
   }
 
-  console.log(`Found ${vendorMatches.length} candidate matches processed by vendors.`);
+  console.log(`Found ${allMatches.length} candidate matches.`);
   
   // Clear any existing feedbacks to avoid duplication
   const cleared = await prisma.interviewFeedback.deleteMany();
@@ -85,7 +79,7 @@ async function seedFeedback() {
 
   // Let's seed feedback for about 70% of the matches
   let seededCount = 0;
-  const matchesToSeed = vendorMatches.slice(0, Math.floor(vendorMatches.length * 0.7) || 1);
+  const matchesToSeed = allMatches.slice(0, Math.floor(allMatches.length * 0.7) || 1);
 
   const operations = [];
   for (let i = 0; i < matchesToSeed.length; i++) {

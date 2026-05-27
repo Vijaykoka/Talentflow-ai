@@ -14,6 +14,7 @@ import {
   IconTags,
   IconBriefcase,
   IconBuildingStore,
+  IconBuilding,
   IconCheck,
   IconX,
 } from "@tabler/icons-react";
@@ -26,6 +27,7 @@ type FormData = {
   rateMax: string;
   location: string;
   priority: string;
+  clientId: string;
   vendorId: string;
 };
 
@@ -44,6 +46,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 export default function CreateDemandTab() {
   const { setActiveTab } = useTab();
   const [vendors, setVendors] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -55,25 +58,31 @@ export default function CreateDemandTab() {
     rateMax: "",
     location: "",
     priority: "MEDIUM",
+    clientId: "",
     vendorId: "",
   });
 
   useEffect(() => {
-    fetchVendors();
+    fetchClientsAndVendors();
   }, []);
 
-  const fetchVendors = async () => {
+  const fetchClientsAndVendors = async () => {
     try {
-      const res = await fetch("/api/vendors");
-      setVendors(await res.json());
+      const [clientsRes, vendorsRes] = await Promise.all([
+        fetch("/api/clients"),
+        fetch("/api/vendors")
+      ]);
+      setClients(await clientsRes.json());
+      setVendors(await vendorsRes.json());
     } catch (err) {
-      console.error("Failed to fetch vendors", err);
+      console.error("Failed to fetch clients or vendors", err);
     }
   };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData.title.trim()) newErrors.title = "Job title is required";
+    if (!formData.clientId) newErrors.clientId = "Client Partner Account is required";
     if (!formData.rateMin) newErrors.rateMin = "Minimum rate is required";
     if (!formData.rateMax) newErrors.rateMax = "Maximum rate is required";
     if (formData.rateMin && formData.rateMax && parseFloat(formData.rateMin) > parseFloat(formData.rateMax)) {
@@ -90,7 +99,7 @@ export default function CreateDemandTab() {
     setLoading(true);
     const skills = formData.requiredSkills.split(",").map(s => s.trim()).filter(Boolean);
     try {
-      await fetch("/api/demands", {
+      const res = await fetch("/api/demands", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -100,10 +109,15 @@ export default function CreateDemandTab() {
           requiredSkills: JSON.stringify(skills)
         }),
       });
-      setFormData({ title: "", jdText: "", requiredSkills: "", rateMin: "", rateMax: "", location: "", priority: "MEDIUM", vendorId: "" });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to create demand");
+      }
+      setFormData({ title: "", jdText: "", requiredSkills: "", rateMin: "", rateMax: "", location: "", priority: "MEDIUM", clientId: "", vendorId: "" });
       setActiveTab("demand");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create demand", err);
+      alert(err.message || "An error occurred while creating the demand requisition.");
     } finally {
       setLoading(false);
     }
@@ -115,6 +129,7 @@ export default function CreateDemandTab() {
     .filter(Boolean);
 
   const selectedVendor = vendors.find(v => v.id === formData.vendorId);
+  const selectedClient = clients.find(c => c.id === formData.clientId);
 
   return (
     <div className="request-demand-container">
@@ -129,14 +144,14 @@ export default function CreateDemandTab() {
       </div>
 
       <div className="request-demand-grid">
-        <div className="form-card">
-          <div className="form-section">
+        <div className="form-container-flow">
+          <div className="form-card-section">
             <h3 className="form-section-title">
               <IconBriefcase size={16} />
               Role Details
             </h3>
 
-            <div className="form-row">
+            <div className="form-row" style={{ marginBottom: "24px" }}>
               <div className="form-group">
                 <Label htmlFor="title">Job Title <span className="required">*</span></Label>
                 <Input
@@ -174,7 +189,7 @@ export default function CreateDemandTab() {
             </div>
           </div>
 
-          <div className="form-section">
+          <div className="form-card-section">
             <h3 className="form-section-title">
               <IconTags size={16} />
               Skills & Qualifications
@@ -198,7 +213,7 @@ export default function CreateDemandTab() {
             </div>
           </div>
 
-          <div className="form-section">
+          <div className="form-card-section">
             <h3 className="form-section-title">
               <IconCurrencyDollar size={16} />
               Compensation & Priority
@@ -241,22 +256,80 @@ export default function CreateDemandTab() {
                   value={formData.priority} 
                   onValueChange={v => setFormData({ ...formData, priority: v! })}
                 >
-                  <SelectTrigger id="priority">
-                    <SelectValue>
-                      {{ HIGH: "High Priority", MEDIUM: "Medium Priority", LOW: "Low Priority" }[formData.priority] ?? "Select priority"}
-                    </SelectValue>
+                  <SelectTrigger id="priority" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
+                      <span 
+                        style={{ 
+                          width: "8px", 
+                          height: "8px", 
+                          borderRadius: "50%", 
+                          backgroundColor: { HIGH: "#E24B4A", MEDIUM: "#EF9F27", LOW: "#639922" }[formData.priority] || "#888",
+                          display: "inline-block",
+                          flexShrink: 0
+                        }} 
+                      />
+                      <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-text-primary)" }}>
+                        {{ HIGH: "High Priority", MEDIUM: "Medium Priority", LOW: "Low Priority" }[formData.priority] || "Select priority"}
+                      </span>
+                    </div>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="HIGH">High Priority</SelectItem>
-                    <SelectItem value="MEDIUM">Medium Priority</SelectItem>
-                    <SelectItem value="LOW">Low Priority</SelectItem>
+                    <SelectItem value="HIGH">
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#E24B4A", flexShrink: 0 }} />
+                        <span style={{ fontSize: "13px" }}>High Priority</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="MEDIUM">
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#EF9F27", flexShrink: 0 }} />
+                        <span style={{ fontSize: "13px" }}>Medium Priority</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="LOW">
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#639922", flexShrink: 0 }} />
+                        <span style={{ fontSize: "13px" }}>Low Priority</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
           </div>
 
-          <div className="form-section">
+          <div className="form-card-section">
+            <h3 className="form-section-title">
+              <IconBuilding size={16} />
+              Client Partner Account
+            </h3>
+
+            <div className="form-group">
+              <Label htmlFor="client">Target Client Account <span className="required">*</span></Label>
+              <Select 
+                value={formData.clientId} 
+                onValueChange={v => {
+                  setFormData({ ...formData, clientId: v! });
+                  if (errors.clientId) setErrors({ ...errors, clientId: "" });
+                }}
+              >
+                <SelectTrigger id="client" className={errors.clientId ? "input-error" : ""} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
+                    <IconBuilding size={14} style={{ color: "var(--color-primary)", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-text-primary)" }}>
+                      {formData.clientId ? clients.find(c => c.id === formData.clientId)?.name ?? "Select Client Account" : "Select Client Account"}
+                    </span>
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {errors.clientId && <span className="error-text">{errors.clientId}</span>}
+            </div>
+          </div>
+
+          <div className="form-card-section">
             <h3 className="form-section-title">
               <IconBuildingStore size={16} />
               Recruiting Partner
@@ -268,20 +341,23 @@ export default function CreateDemandTab() {
                 value={formData.vendorId || "internal"} 
                 onValueChange={v => setFormData({ ...formData, vendorId: v === "internal" || !v ? "" : v })}
               >
-                <SelectTrigger id="vendor">
-                  <SelectValue placeholder="Internal Requisition (No Vendor Partner)">
-                    {formData.vendorId ? vendors.find(vendor => vendor.id === formData.vendorId)?.name ?? "Internal Requisition (No Vendor Partner)" : undefined}
-                  </SelectValue>
+                <SelectTrigger id="vendor" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
+                    <IconBuildingStore size={14} style={{ color: "var(--color-text-secondary)", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-text-primary)" }}>
+                      {formData.vendorId ? vendors.find(vendor => vendor.id === formData.vendorId)?.name ?? "Internal Sourcing (No Vendor)" : "Internal Sourcing (No Vendor)"}
+                    </span>
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="internal">Internal Requisition (No Vendor Partner)</SelectItem>
+                  <SelectItem value="internal">Internal Sourcing (No Vendor)</SelectItem>
                   {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="form-actions">
+          <div className="form-actions-row">
             <Button
               type="button"
               variant="outline"
@@ -350,12 +426,18 @@ export default function CreateDemandTab() {
               </div>
             )}
 
-            <div className="preview-footer">
-              <div className="preview-vendor">
-                <IconBuildingStore size={12} />
-                {selectedVendor ? selectedVendor.name : "Internal Sourcing"}
+            <div className="preview-footer" style={{ flexDirection: "column", gap: "8px", alignItems: "stretch" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                <div className="preview-vendor" style={{ fontSize: "11px", gap: "4px" }}>
+                  <IconBuilding size={12} style={{ color: "var(--color-primary)" }} />
+                  <span style={{ fontWeight: 600 }}>Client:</span> {selectedClient ? selectedClient.name : "Unspecified Client"}
+                </div>
+                <span className="preview-status">Open</span>
               </div>
-              <span className="preview-status">Open</span>
+              <div className="preview-vendor" style={{ fontSize: "11px", gap: "4px" }}>
+                <IconBuildingStore size={12} style={{ color: "var(--color-text-secondary)" }} />
+                <span style={{ fontWeight: 600 }}>Vendor:</span> {selectedVendor ? selectedVendor.name : "Internal Sourcing"}
+              </div>
             </div>
           </div>
         </div>
@@ -398,15 +480,28 @@ export default function CreateDemandTab() {
           }
         }
 
-        .form-card {
+        .form-container-flow {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+
+        .form-card-section {
           background: var(--color-background-primary);
-          border: 0.5px solid var(--color-border-tertiary);
-          border-radius: var(--radius);
-          overflow: hidden;
+          border: 1px solid var(--color-border-tertiary);
+          border-radius: 12px;
+          padding: 28px 32px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03);
+          transition: all 0.2s ease-in-out;
+        }
+
+        .form-card-section:hover {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+          border-color: rgba(24, 95, 165, 0.15);
         }
 
         .form-section {
-          padding: 20px 24px;
+          padding: 28px 32px;
           border-bottom: 0.5px solid var(--color-border-tertiary);
         }
 
@@ -418,10 +513,10 @@ export default function CreateDemandTab() {
           display: flex;
           align-items: center;
           gap: 8px;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 600;
           color: var(--color-text-primary);
-          margin-bottom: 16px;
+          margin-bottom: 20px;
           padding-bottom: 12px;
           border-bottom: 0.5px solid var(--color-border-tertiary);
         }
@@ -430,34 +525,38 @@ export default function CreateDemandTab() {
           color: var(--color-primary);
         }
 
-        #vendor {
+        #priority, #client, #vendor {
           min-height: 42px;
-          background: var(--color-background-primary);
-          border: 0.5px solid var(--color-border-tertiary);
-          border-radius: var(--radius);
-          font-size: 13px;
-          padding: 8px 12px;
-          transition: all 0.2s;
+          background: var(--color-background-primary) !important;
+          border: 1.5px solid var(--color-border-tertiary) !important;
+          border-radius: 8px !important;
+          font-size: 13px !important;
+          padding: 10px 14px !important;
+          transition: all 0.2s ease-in-out !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
         }
 
-        #vendor:hover {
-          border-color: var(--color-primary);
+        #priority:hover, #client:hover, #vendor:hover {
+          border-color: var(--color-primary) !important;
         }
 
-        #vendor:focus {
-          outline: none;
-          border-color: var(--color-primary);
-          box-shadow: 0 0 0 2px var(--color-blue-light);
+        #priority:focus, #client:focus, #vendor:focus {
+          outline: none !important;
+          border-color: var(--color-primary) !important;
+          box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.15) !important;
         }
 
         .form-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 16px;
+          gap: 24px;
         }
 
         .form-row.three-col {
           grid-template-columns: 1fr 1fr 1fr;
+          gap: 24px;
         }
 
         @media (max-width: 640px) {
@@ -469,13 +568,36 @@ export default function CreateDemandTab() {
         .form-group {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
         }
 
         .form-group label {
           font-size: 12px;
-          font-weight: 500;
+          font-weight: 600;
           color: var(--color-text-secondary);
+          margin-bottom: 4px;
+        }
+
+        .form-section input,
+        .form-section textarea {
+          padding: 10px 14px !important;
+          font-size: 13px !important;
+          border-radius: 8px !important;
+          border: 1.5px solid var(--color-border-tertiary) !important;
+          background: var(--color-background-primary) !important;
+          transition: all 0.2s ease-in-out !important;
+        }
+
+        .form-section input:hover,
+        .form-section textarea:hover {
+          border-color: var(--color-primary) !important;
+        }
+
+        .form-section input:focus,
+        .form-section textarea:focus {
+          border-color: var(--color-primary) !important;
+          box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.15) !important;
+          outline: none !important;
         }
 
         .required {
@@ -510,13 +632,15 @@ export default function CreateDemandTab() {
           border: 0.5px solid rgba(24, 95, 165, 0.15);
         }
 
-        .form-actions {
+        .form-actions-row {
           display: flex;
           justify-content: flex-end;
-          gap: 12px;
-          padding: 16px 24px;
-          background: var(--color-background-secondary);
-          border-top: 0.5px solid var(--color-border-tertiary);
+          gap: 16px;
+          padding: 20px 32px;
+          background: var(--color-background-primary);
+          border: 1px solid var(--color-border-tertiary);
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
         }
 
         .submit-btn {

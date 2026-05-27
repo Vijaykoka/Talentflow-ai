@@ -8,6 +8,7 @@ export async function GET() {
   try {
     const demands = await prisma.demand.findMany({
       include: {
+        client: true,
         vendor: true,
         _count: { select: { matches: true, hires: true } },
       },
@@ -23,7 +24,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, jdText, requiredSkills, rateMin, rateMax, location, priority, vendorId } = body;
+    const { title, jdText, requiredSkills, rateMin, rateMax, location, priority, clientId, vendorId } = body;
 
     const demand = await prisma.demand.create({
       data: {
@@ -34,7 +35,8 @@ export async function POST(request: Request) {
         rateMax,
         location,
         priority: priority || "MEDIUM",
-        vendorId,
+        clientId: clientId || null,
+        vendorId: vendorId || null,
       },
     });
 

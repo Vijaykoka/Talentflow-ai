@@ -54,6 +54,10 @@ interface Hire {
     id: string;
     name: string;
   } | null;
+  client: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface CandidateWithProjects {
@@ -178,11 +182,17 @@ export default function CandidatesWithProjectsPage() {
                       {candidate.hires.length > 0 ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxWidth: "300px" }}>
                           {candidate.hires.slice(0, 2).map(hire => (
-                            <div key={hire.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "4px 8px", background: "var(--color-background-secondary)", borderRadius: "var(--radius)", fontSize: "11px" }}>
-                              <Briefcase className="h-3 w-3" style={{ color: "var(--color-primary)" }} />
-                              <span style={{ fontWeight: 500, color: "var(--color-text-primary)" }}>{hire.demand.title}</span>
-                              <span style={{ color: "var(--color-text-secondary)" }}>${hire.hiredRate}/hr</span>
-                              <span className={HIRE_STATUS_COLORS[hire.status]}>{hire.status}</span>
+                            <div key={hire.id} style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "6px 8px", background: "var(--color-background-secondary)", borderRadius: "var(--radius)", fontSize: "11px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <Briefcase className="h-3 w-3" style={{ color: "var(--color-primary)" }} />
+                                <span style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{hire.demand.title}</span>
+                                <span className={HIRE_STATUS_COLORS[hire.status]} style={{ marginLeft: "auto" }}>{hire.status}</span>
+                              </div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", color: "var(--color-text-secondary)", fontSize: "10px", marginTop: "2px" }}>
+                                <span>Client: <strong>{hire.client?.name || "-"}</strong></span>
+                                <span>Vendor: <strong>{hire.vendor?.name || "Internal"}</strong></span>
+                                <span>Rate: <strong>${hire.hiredRate}/hr</strong></span>
+                              </div>
                             </div>
                           ))}
                           {candidate.hires.length > 2 && (
@@ -219,6 +229,14 @@ export default function CandidatesWithProjectsPage() {
                               </div>
                               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", fontSize: "11px" }}>
                                 <div>
+                                  <span style={{ color: "var(--color-text-tertiary)" }}>Client:</span>
+                                  <span style={{ color: "var(--color-text-secondary)", marginLeft: "4px", fontWeight: 500 }}>{hire.client?.name || "-"}</span>
+                                </div>
+                                <div>
+                                  <span style={{ color: "var(--color-text-tertiary)" }}>Vendor:</span>
+                                  <span style={{ color: "var(--color-text-secondary)", marginLeft: "4px" }}>{hire.vendor?.name || "Internal (Bench)"}</span>
+                                </div>
+                                <div>
                                   <span style={{ color: "var(--color-text-tertiary)" }}>Rate:</span>
                                   <span style={{ color: "var(--color-text-secondary)", marginLeft: "4px" }}>${hire.hiredRate}/hr</span>
                                 </div>
@@ -229,10 +247,6 @@ export default function CandidatesWithProjectsPage() {
                                 <div>
                                   <span style={{ color: "var(--color-text-tertiary)" }}>Margin:</span>
                                   <span style={{ color: "var(--color-success-dark)", marginLeft: "4px" }}>{formatCurrency(hire.projectedMargin12m || 0)}</span>
-                                </div>
-                                <div>
-                                  <span style={{ color: "var(--color-text-tertiary)" }}>Vendor:</span>
-                                  <span style={{ color: "var(--color-text-secondary)", marginLeft: "4px" }}>{hire.vendor?.name || "Internal"}</span>
                                 </div>
                               </div>
                             </div>

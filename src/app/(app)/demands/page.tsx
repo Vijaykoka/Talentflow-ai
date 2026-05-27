@@ -26,22 +26,23 @@ function parseSkills(skills: string | string[]): string[] {
 export default function DemandsPage() {
   const [demands, setDemands] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   type FormData = {
     title: string; jdText: string; requiredSkills: string;
     rateMin: string; rateMax: string; location: string;
-    priority: string; vendorId: string;
+    priority: string; clientId: string; vendorId: string;
   };
 
   const [formData, setFormData] = useState<FormData>({
     title: "", jdText: "", requiredSkills: "",
     rateMin: "", rateMax: "", location: "",
-    priority: "MEDIUM", vendorId: "",
+    priority: "MEDIUM", clientId: "", vendorId: "",
   });
 
-  useEffect(() => { fetchDemands(); fetchVendors(); }, []);
+  useEffect(() => { fetchDemands(); fetchVendors(); fetchClients(); }, []);
 
   const fetchDemands = async () => {
     const res = await fetch("/api/demands");
@@ -54,17 +55,38 @@ export default function DemandsPage() {
     setVendors(await res.json());
   };
 
+  const fetchClients = async () => {
+    const res = await fetch("/api/clients");
+    setClients(await res.json());
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const skills = formData.requiredSkills.split(",").map(s => s.trim()).filter(Boolean);
-    await fetch("/api/demands", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...formData, rateMin: parseFloat(formData.rateMin), rateMax: parseFloat(formData.rateMax), requiredSkills: JSON.stringify(skills) }),
-    });
-    setFormData({ title: "", jdText: "", requiredSkills: "", rateMin: "", rateMax: "", location: "", priority: "MEDIUM", vendorId: "" });
-    setIsOpen(false);
-    fetchDemands();
+    try {
+      const res = await fetch("/api/demands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          ...formData, 
+          rateMin: parseFloat(formData.rateMin), 
+          rateMax: parseFloat(formData.rateMax), 
+          requiredSkills: JSON.stringify(skills),
+          clientId: formData.clientId || null,
+          vendorId: formData.vendorId || null,
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to create demand");
+      }
+      setFormData({ title: "", jdText: "", requiredSkills: "", rateMin: "", rateMax: "", location: "", priority: "MEDIUM", clientId: "", vendorId: "" });
+      setIsOpen(false);
+      fetchDemands();
+    } catch (err: any) {
+      console.error("Failed to create demand", err);
+      alert(err.message || "An error occurred while creating the demand requisition.");
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -148,18 +170,32 @@ export default function DemandsPage() {
                   </Select>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Vendor (Optional)</Label>
-                <Select 
-                  value={formData.vendorId} 
-                  onValueChange={v => setFormData({...formData, vendorId: v ?? ""})}
-                  items={vendors.map(v => ({ label: v.name, value: v.id }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
-                  <SelectContent>
-                    {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Client Account (Required)</Label>
+                  <Select 
+                    value={formData.clientId} 
+                    onValueChange={v => setFormData({...formData, clientId: v!})}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
+                    <SelectContent>
+                      {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Vendor Partner (Optional)</Label>
+                  <Select 
+                    value={formData.vendorId || "internal"} 
+                    onValueChange={v => setFormData({...formData, vendorId: v === "internal" || !v ? "" : v})}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Internal Sourcing" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="internal">Internal Sourcing (Bench)</SelectItem>
+                      {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <Button type="submit" className="w-full">Create Demand</Button>
             </form>
@@ -177,6 +213,8 @@ export default function DemandsPage() {
             <thead>
               <tr style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
                 <th style={{ textAlign: "left", padding: "8px", color: "var(--color-text-secondary)", fontWeight: 500, fontSize: "11px" }}>Title</th>
+                <th style={{ textAlign: "left", padding: "8px", color: "var(--color-text-secondary)", fontWeight: 500, fontSize: "11px" }}>Client</th>
+                <th style={{ textAlign: "left", padding: "8px", color: "var(--color-text-secondary)", fontWeight: 500, fontSize: "11px" }}>Recruiting Vendor</th>
                 <th style={{ textAlign: "left", padding: "8px", color: "var(--color-text-secondary)", fontWeight: 500, fontSize: "11px" }}>Priority</th>
                 <th style={{ textAlign: "left", padding: "8px", color: "var(--color-text-secondary)", fontWeight: 500, fontSize: "11px" }}>Status</th>
                 <th style={{ textAlign: "left", padding: "8px", color: "var(--color-text-secondary)", fontWeight: 500, fontSize: "11px" }}>Rate</th>
@@ -194,6 +232,12 @@ export default function DemandsPage() {
                       {demand.priority === "HIGH" && <Flame className="h-3.5 w-3.5" style={{ color: "#E24B4A" }} />}
                       {demand.title}
                     </span>
+                  </td>
+                  <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>
+                    {demand.client?.name || <span style={{ fontStyle: "italic", color: "var(--color-text-tertiary)" }}>-</span>}
+                  </td>
+                  <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>
+                    {demand.vendor?.name || <span style={{ fontStyle: "italic", color: "var(--color-text-tertiary)" }}>Internal (Bench)</span>}
                   </td>
                   <td style={{ padding: "8px" }}>
                     <span className={PRIORITY_COLORS[demand.priority]}>{demand.priority}</span>
@@ -244,7 +288,7 @@ export default function DemandsPage() {
               ))}
               {demands.length === 0 && (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No demands yet. Click {'“'}Create Demand{'”'} to add one.</td>
+                  <td colSpan={10} style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No demands yet. Click {'“'}Create Demand{'”'} to add one.</td>
                 </tr>
               )}
             </tbody>

@@ -7,6 +7,7 @@ import {
   IconSparkles,
   IconChartLine,
   IconBuilding,
+  IconBuildingStore,
   IconMap2,
   IconBolt,
   IconBell,
@@ -57,12 +58,14 @@ const navSections = [
     label: "Analysis",
     items: [
       { id: "skillgap" as TabId, label: "Skill Gap", icon: IconScale },
+      { id: "locationmatch" as TabId, label: "Location Match", icon: IconMap2 },
     ],
   },
   {
     label: "Admin",
     items: [
-      { id: "vendor" as TabId, label: "Vendors", icon: IconBuilding },
+      { id: "client" as TabId, label: "Clients", icon: IconBuilding },
+      { id: "vendor" as TabId, label: "Vendors", icon: IconBuildingStore },
       { id: "activity" as TabId, label: "Activity", icon: IconTimeline },
     ],
   },
@@ -422,6 +425,15 @@ function Topbar() {
         </div>
         <span className="badge-blue">Vibeathon 2026</span>
         <div className="topbar-right">
+          <a
+            href="/presentation"
+            target="_blank"
+            className="theme-toggle flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 rounded-lg transition text-xs font-bold"
+            style={{ textDecoration: 'none' }}
+            title="Open Interactive PPT Presentation Pitch Deck"
+          >
+            <IconSparkles size={14} className="animate-pulse" /> Pitch Deck
+          </a>
           <button
             className="theme-toggle"
             onClick={() => setShowWalkthrough(true)}

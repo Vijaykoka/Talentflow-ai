@@ -20,7 +20,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, phone, resumeUrl, extractedSkills, experienceYears, currentCtc, expectedCtc, status } = body;
+    const { name, email, phone, resumeUrl, extractedSkills, experienceYears, currentCtc, expectedCtc, status, location } = body;
 
     const candidate = await prisma.candidate.create({
       data: {
@@ -33,6 +33,7 @@ export async function POST(request: Request) {
         currentCtc,
         expectedCtc,
         status: status || "AVAILABLE",
+        location,
       },
     });
 
@@ -60,12 +61,12 @@ export async function DELETE(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, status, hotTalent } = body;
+    const { id, status, hotTalent, location } = body;
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
     const candidate = await prisma.candidate.update({
       where: { id },
-      data: { status, hotTalent },
+      data: { status, hotTalent, location },
     });
     return NextResponse.json(candidate);
   } catch (error: any) {
