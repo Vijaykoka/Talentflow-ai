@@ -129,7 +129,7 @@ export default function TdafTab() {
 
   // Immediate Joiners / Bench calculations
   const benchCandidates = useMemo(() => {
-    return candidates.filter((c: any) => !c.vendorId && c.status === "AVAILABLE");
+    return candidates.filter((c: any) => c.status === "AVAILABLE");
   }, [candidates]);
 
   const activeVendorsList = useMemo(() => {
