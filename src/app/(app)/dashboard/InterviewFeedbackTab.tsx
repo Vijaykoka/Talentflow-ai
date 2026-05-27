@@ -73,6 +73,15 @@ export default function InterviewFeedbackTab() {
   const [schedMeetingLink, setSchedMeetingLink] = useState<string>("");
   const [schedulingSubmitting, setSchedulingSubmitting] = useState(false);
 
+  // KPI Dialog States
+  const [isKpiDialogOpen, setIsKpiDialogOpen] = useState(false);
+  const [kpiDialogType, setKpiDialogType] = useState<"assessments" | "tech_score" | "scheduled" | "rec_rate" | null>(null);
+
+  const openKpiDialog = (type: "assessments" | "tech_score" | "scheduled" | "rec_rate") => {
+    setKpiDialogType(type);
+    setIsKpiDialogOpen(true);
+  };
+
   useEffect(() => {
     fetchFeedbacks();
     fetchInterviews();
@@ -333,7 +342,11 @@ export default function InterviewFeedbackTab() {
 
       {/* KPI Grid */}
       <div className="kpi-grid" style={{ marginBottom: "20px" }}>
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-primary)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => openKpiDialog("assessments")}
+          style={{ "--kpi-color": "var(--color-primary)", cursor: "pointer" } as React.CSSProperties}
+        >
           <MessageSquare className="premium-kpi-icon" size={40} />
           <div className="kpi-label">Assessments Recorded</div>
           <div className="kpi-val">{stats.count}</div>
@@ -342,7 +355,11 @@ export default function InterviewFeedbackTab() {
           </div>
         </div>
 
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-blue-mid)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => openKpiDialog("tech_score")}
+          style={{ "--kpi-color": "var(--color-blue-mid)", cursor: "pointer" } as React.CSSProperties}
+        >
           <Code className="premium-kpi-icon" size={40} />
           <div className="kpi-label">Avg Technical Score</div>
           <div className="kpi-val" style={{ color: "var(--color-primary)" }}>{stats.avgTech}%</div>
@@ -351,7 +368,11 @@ export default function InterviewFeedbackTab() {
           </div>
         </div>
 
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-purple)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => openKpiDialog("scheduled")}
+          style={{ "--kpi-color": "var(--color-purple)", cursor: "pointer" } as React.CSSProperties}
+        >
           <Brain className="premium-kpi-icon" size={40} />
           <div className="kpi-label">Scheduled Interviews</div>
           <div className="kpi-val" style={{ color: "var(--color-purple)" }}>
@@ -362,7 +383,11 @@ export default function InterviewFeedbackTab() {
           </div>
         </div>
 
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-success)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => openKpiDialog("rec_rate")}
+          style={{ "--kpi-color": "var(--color-success)", cursor: "pointer" } as React.CSSProperties}
+        >
           <Award className="premium-kpi-icon" size={40} />
           <div className="kpi-label">Hire Recommendation Rate</div>
           <div className="kpi-val" style={{ color: "var(--color-success-dark)" }}>{stats.successRate}%</div>
@@ -1096,6 +1121,182 @@ export default function InterviewFeedbackTab() {
               </div>
             </>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Premium KPI Dialogs */}
+      <Dialog open={isKpiDialogOpen} onOpenChange={setIsKpiDialogOpen}>
+        <DialogContent className="custom-dialog-content">
+          <DialogHeader className="custom-dialog-header">
+            <DialogTitle>
+              {kpiDialogType === "assessments" && `Recorded Candidate Evaluations (${matches.filter(m => m.feedback).length})`}
+              {kpiDialogType === "tech_score" && `Technical Evaluation Performance Rank`}
+              {kpiDialogType === "scheduled" && `Active Scheduled Interview Panels (${interviews.filter(i => i.status === "SCHEDULED").length})`}
+              {kpiDialogType === "rec_rate" && `Assessment Outcomes & Recommendation Rate (${stats.successRate}%)`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="custom-dialog-body" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+            
+            {kpiDialogType === "assessments" && (
+              <div>
+                {matches.filter(m => m.feedback).length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No recorded assessments found.</div>
+                ) : (
+                  matches.filter(m => m.feedback).map((m: any, index: number) => (
+                    <div key={m.id} className="popup-row">
+                      <div className="popup-avatar" style={{ background: "var(--color-blue-light)", color: "var(--color-primary)" }}>
+                        {m.candidate?.name?.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="popup-info">
+                        <div className="popup-title" style={{ fontSize: "14px", fontWeight: "600" }}>{m.candidate?.name}</div>
+                        <div className="popup-sub" style={{ fontSize: "11px", marginTop: "2px" }}>
+                          Job: <strong>{m.demand?.title}</strong> (via {m.demand?.vendor?.name})
+                          <span style={{ color: "var(--color-border-tertiary)", margin: "0 6px" }}>•</span>
+                          Interviewer: {m.feedback.interviewer}
+                        </div>
+                      </div>
+                      <div className="popup-stat" style={{ textAlign: "right", minWidth: "110px" }}>
+                        <span className={`tag ${getRecBadgeClass(m.feedback.recommendation)}`} style={{ fontSize: "9px" }}>
+                          {formatRecText(m.feedback.recommendation)}
+                        </span>
+                        <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", marginTop: "4px" }}>
+                          Rating: {m.feedback.rating}★
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {kpiDialogType === "tech_score" && (
+              <div>
+                {matches.filter(m => m.feedback).length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No technical scores available.</div>
+                ) : (
+                  [...matches.filter(m => m.feedback)].sort((a, b) => b.feedback.technicalScore - a.feedback.technicalScore).map((m: any) => (
+                    <div key={m.id} className="popup-row">
+                      <div className="popup-avatar" style={{ background: "var(--color-purple-light)", color: "var(--color-purple)" }}>
+                        {m.candidate?.name?.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="popup-info">
+                        <div className="popup-title" style={{ fontSize: "14px", fontWeight: "600" }}>{m.candidate?.name}</div>
+                        <div className="popup-sub" style={{ fontSize: "11px", marginTop: "2px" }}>
+                          Job: <strong>{m.demand?.title}</strong>
+                          <span style={{ color: "var(--color-border-tertiary)", margin: "0 6px" }}>•</span>
+                          Behav Score: {m.feedback.behavioralScore}%
+                        </div>
+                      </div>
+                      <div className="popup-stat" style={{ textAlign: "right", minWidth: "110px" }}>
+                        <span className="popup-stat-val" style={{ color: "var(--color-primary)", fontSize: "14px", fontWeight: "700" }}>
+                          {m.feedback.technicalScore}%
+                        </span>
+                        <span className="popup-stat-label">Technical Score</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {kpiDialogType === "scheduled" && (
+              <div>
+                {interviews.filter(i => i.status === "SCHEDULED").length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No scheduled interviews active.</div>
+                ) : (
+                  interviews.filter(i => i.status === "SCHEDULED").map((int: any) => {
+                    const candidate = int.match?.candidate;
+                    const demand = int.match?.demand;
+                    const dateStr = new Date(int.scheduledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+                    const timeStr = new Date(int.scheduledAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+                    return (
+                      <div key={int.id} className="popup-row">
+                        <div className="popup-avatar" style={{ background: "var(--color-blue-light)", color: "var(--color-primary)" }}>
+                          {candidate?.name?.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div className="popup-info">
+                          <div className="popup-title" style={{ fontSize: "14px", fontWeight: "600" }}>{candidate?.name}</div>
+                          <div className="popup-sub" style={{ fontSize: "11px", marginTop: "2px" }}>
+                            Panel: <strong>{int.panelName}</strong>
+                            <span style={{ color: "var(--color-border-tertiary)", margin: "0 6px" }}>•</span>
+                            Time: {dateStr} at {timeStr}
+                          </div>
+                        </div>
+                        <div className="popup-stat" style={{ textAlign: "right" }}>
+                          <span className="tag tag-amber" style={{ fontSize: "9px" }}>
+                            {int.status}
+                          </span>
+                          <button 
+                            onClick={() => handleSendReminder(int.panelName, candidate?.name)}
+                            style={{
+                              background: "none",
+                              border: "1px solid var(--color-border-tertiary)",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              fontSize: "9px",
+                              fontWeight: 600,
+                              color: "var(--color-text-primary)",
+                              cursor: "pointer",
+                              display: "block",
+                              marginTop: "4px",
+                              marginLeft: "auto"
+                            }}
+                          >
+                            Ping Panel
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {kpiDialogType === "rec_rate" && (
+              <div>
+                <div style={{ background: "var(--color-background-secondary)", padding: "12px", borderRadius: "8px", marginBottom: "16px", fontSize: "11px" }}>
+                  <div style={{ fontWeight: "700", marginBottom: "8px" }}>Recommendation Breakdown:</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <div>⭐ Strong Hire: <strong>{matches.filter(m => m.feedback?.recommendation === "STRONG_HIRE").length}</strong></div>
+                    <div>✔ Hire: <strong>{matches.filter(m => m.feedback?.recommendation === "HIRE").length}</strong></div>
+                    <div>✖ No Hire: <strong>{matches.filter(m => m.feedback?.recommendation === "NO_HIRE").length}</strong></div>
+                    <div>🚫 Strong No Hire: <strong>{matches.filter(m => m.feedback?.recommendation === "STRONG_NO_HIRE").length}</strong></div>
+                  </div>
+                </div>
+
+                <div style={{ fontWeight: "700", marginBottom: "8px", fontSize: "12px" }}>Shortlisted Hire Candidates:</div>
+                {matches.filter(m => m.feedback?.recommendation === "STRONG_HIRE" || m.feedback?.recommendation === "HIRE").length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "16px", color: "var(--color-text-tertiary)", fontSize: "11px" }}>No candidate hires recommended yet.</div>
+                ) : (
+                  matches.filter(m => m.feedback?.recommendation === "STRONG_HIRE" || m.feedback?.recommendation === "HIRE").map((m: any) => (
+                    <div key={m.id} className="popup-row">
+                      <div className="popup-avatar" style={{ background: "var(--color-green-light)", color: "var(--color-success-dark)" }}>
+                        {m.candidate?.name?.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="popup-info">
+                        <div className="popup-title" style={{ fontSize: "14px", fontWeight: "600" }}>{m.candidate?.name}</div>
+                        <div className="popup-sub" style={{ fontSize: "11px", marginTop: "2px" }}>
+                          Requisition: <strong>{m.demand?.title}</strong>
+                          <span style={{ color: "var(--color-border-tertiary)", margin: "0 6px" }}>•</span>
+                          Tech Score: {m.feedback.technicalScore}%
+                        </div>
+                      </div>
+                      <div className="popup-stat" style={{ textAlign: "right", minWidth: "110px" }}>
+                        <span className={`tag ${getRecBadgeClass(m.feedback.recommendation)}`} style={{ fontSize: "9px" }}>
+                          {formatRecText(m.feedback.recommendation)}
+                        </span>
+                        <div style={{ fontSize: "10px", color: "var(--color-text-tertiary)", marginTop: "4px" }}>
+                          Rating: {m.feedback.rating}★
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+          </div>
         </DialogContent>
       </Dialog>
     </div>
