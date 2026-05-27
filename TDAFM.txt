@@ -1,0 +1,337 @@
+# Talent Demand Acquisition & Fulfillment (TDAF) Manager Dashboard
+
+A **TDAF Manager Dashboard** in a service-based company should act as a **central command center** to manage:
+
+* Client demands
+* Hiring pipeline
+* Resource fulfillment
+* Vendor coordination
+* Bench management
+* Interview tracking
+* SLA monitoring
+* Delivery readiness
+* Reporting & analytics
+
+The goal is to provide **end-to-end visibility from demand creation to candidate deployment**.
+
+---
+
+# Core Modules of the Dashboard
+
+## 1. Executive Summary Dashboard
+
+Shows high-level KPIs.
+
+### Widgets
+
+* Total Open Demands
+* Closed Demands
+* Critical Aging Positions
+* Fulfillment %
+* Bench Availability
+* Active Vendors
+* Interviews Scheduled Today
+* Offers Released
+* Joinings This Week
+* Revenue Impact Due to Open Positions
+
+### Charts
+
+* Demand vs Fulfillment Trend
+* Skill-wise Demand
+* Hiring Funnel
+* Vendor Performance
+* Resource Utilization
+
+---
+
+# 2. Demand Management Module
+
+Tracks all client requirements.
+
+## Features
+
+* Create New Demand
+* Upload JD
+* Define:
+
+  * Skill
+  * Experience
+  * Budget
+  * Location
+  * Priority
+  * Client
+  * Project
+  * SLA
+* Assign recruiter/vendor
+* Track status
+
+## Demand Status Flow
+
+```text
+New → Assigned → Sourcing → Screening → Interview → Offer → Closed
+```
+
+## Important Fields
+
+| Field        | Example         |
+| ------------ | --------------- |
+| Demand ID    | DEM-2026-001    |
+| Client Name  | ABC Corp        |
+| Skill        | Java Full Stack |
+| Priority     | Critical        |
+| Experience   | 5+ Years        |
+| Budget       | ₹18 LPA         |
+| Positions    | 5               |
+| SLA Due Date | 3 Days          |
+
+---
+
+# 3. Recruitment Pipeline Module
+
+Tracks candidate lifecycle.
+
+## Candidate Stages
+
+```text
+Sourced → Screened → Submitted → Interviewed → Selected → Offered → Joined
+```
+
+## Features
+
+* Resume parsing
+* AI skill matching
+* Candidate score
+* Interview scheduling
+* Feedback collection
+* Offer tracking
+
+## Dashboard Metrics
+
+* Submission ratio
+* Interview conversion %
+* Offer acceptance %
+* Dropout rate
+* Recruiter productivity
+
+---
+
+# 4. Bench Management Module
+
+Tracks available internal resources.
+
+## Features
+
+* View available employees
+* Skill inventory
+* Experience tracking
+* Project release dates
+* Internal movement recommendations
+
+## Bench Categories
+
+* Immediate Joiners
+* 15-Day Availability
+* 30-Day Availability
+* Cross-skilled Resources
+
+## AI Suggestions
+
+* Match bench employees to open demands
+* Upskilling recommendations
+
+---
+
+# 5. Vendor Management Module
+
+Tracks staffing partners.
+
+## Features
+
+* Vendor onboarding
+* Vendor-wise submissions
+* Quality score
+* Closure rate
+* TAT tracking
+* Rate card management
+
+## KPIs
+
+| KPI                   | Purpose              |
+| --------------------- | -------------------- |
+| Submission Quality    | Resume relevance     |
+| Interview Ratio       | Screening efficiency |
+| Closure Ratio         | Final hiring success |
+| Average Response Time | SLA adherence        |
+
+---
+
+# 6. Interview Coordination Module
+
+Centralized interview scheduling.
+
+## Features
+
+* Interview calendar
+* Panel assignment
+* Auto reminders
+* Candidate feedback forms
+* Reschedule tracking
+* Zoom/Meet integration
+
+## Status
+
+```text
+Scheduled → Completed → Feedback Pending → Cleared/Rejected
+```
+
+---
+
+# 7. Offer & Onboarding Module
+
+Tracks offer release to joining.
+
+## Features
+
+* Offer approval workflow
+* Salary comparison
+* Document verification
+* Joining tracker
+* Pre-onboarding engagement
+
+## Metrics
+
+* Offer acceptance ratio
+* Joining ratio
+* No-show percentage
+
+---
+
+# 8. SLA & Escalation Module
+
+Monitors delivery timelines.
+
+## SLA Examples
+
+| Priority | SLA      |
+| -------- | -------- |
+| Critical | 24 Hours |
+| High     | 3 Days   |
+| Medium   | 7 Days   |
+
+## Escalations
+
+* Demand aging alerts
+* Recruiter inactivity
+* Vendor delays
+* Interview delays
+
+---
+
+# 9. Analytics & Reporting Module
+
+Advanced business insights.
+
+## Reports
+
+* Monthly hiring report
+* Recruiter performance
+* Client fulfillment report
+* Skill demand forecast
+* Revenue leakage report
+* Hiring cost analysis
+
+## AI Analytics
+
+* Demand prediction
+* Attrition prediction
+* Skill gap analysis
+* Hiring trend forecasting
+
+---
+
+# 10. Communication & Collaboration Module
+
+Internal collaboration system.
+
+## Features
+
+* Chat between recruiters and managers
+* Notes/comments on candidates
+* Email integration
+* Notifications
+* Approval workflows
+
+---
+
+# Recommended User Roles
+
+| Role             | Access                    |
+| ---------------- | ------------------------- |
+| Admin            | Full Access               |
+| TDAF Manager     | End-to-End Control        |
+| Recruiter        | Candidate Pipeline        |
+| Vendor           | Limited Submission Portal |
+| Delivery Manager | Demand Creation           |
+| Interview Panel  | Feedback Access           |
+| HR               | Offer & Onboarding        |
+
+---
+
+# Advanced AI Features 
+
+## AI Resume Matching
+
+* Match resumes with JDs automatically
+* Candidate ranking score
+
+## AI Demand Prediction
+
+* Predict future hiring demand
+
+## AI Recruiter Assistant
+
+* Auto email generation
+* Candidate summaries
+* Interview questions
+
+## AI Skill Intelligence
+
+* Identify trending technologies
+* Skill gap recommendations
+
+---
+
+# Suggested Dashboard Navigation
+
+```text
+Dashboard
+ ├── Demands
+ ├── Candidates
+ ├── Bench
+ ├── Vendors
+ ├── Interviews
+ ├── Offers
+ ├── Onboarding
+ ├── Reports
+ ├── SLA Monitor
+ ├── AI Insights
+ └── Settings
+```
+
+---
+
+# Best KPIs for TDAF Manager
+
+| KPI                          | Target    |
+| ---------------------------- | --------- |
+| Demand Closure SLA           | >90%      |
+| Offer Acceptance             | >80%      |
+| Bench Utilization            | >85%      |
+| Interview-to-Selection Ratio | Optimized |
+| Time-to-Fill                 | Reduced   |
+| Client Satisfaction          | High      |
+| Vendor Efficiency            | Measured  |
+| Revenue Leakage              | Minimal   |
+
+---
