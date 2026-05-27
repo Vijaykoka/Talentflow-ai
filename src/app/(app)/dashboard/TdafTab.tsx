@@ -128,8 +128,12 @@ export default function TdafTab() {
   };
 
   // Immediate Joiners / Bench calculations
-  const benchCandidates = useMemo(() => {
+  const allAvailableCandidates = useMemo(() => {
     return candidates.filter((c: any) => c.status === "AVAILABLE");
+  }, [candidates]);
+
+  const benchCandidates = useMemo(() => {
+    return candidates.filter((c: any) => !c.vendorId && c.status === "AVAILABLE");
   }, [candidates]);
 
   const activeVendorsList = useMemo(() => {
@@ -370,8 +374,8 @@ TalentFlow AI Core`;
                 <div className="premium-kpi-card" onClick={() => setActiveDialog("bench_avail")} style={{ "--kpi-color": "var(--color-success)", cursor: "pointer" } as React.CSSProperties}>
                   <IconUsers className="premium-kpi-icon" size={32} />
                   <div className="kpi-label">Bench Availability</div>
-                  <div className="kpi-val" style={{ color: "var(--color-success-dark)" }}>{benchCandidates.length}</div>
-                  <div className="kpi-delta up">{stats.availableNow} total available consultants</div>
+                  <div className="kpi-val" style={{ color: "var(--color-success-dark)" }}>{allAvailableCandidates.length}</div>
+                  <div className="kpi-delta up">{allAvailableCandidates.length} total available consultants</div>
                 </div>
 
                 <div className="premium-kpi-card" onClick={() => setActiveDialog("active_vendors")} style={{ "--kpi-color": "var(--color-blue-mid)", cursor: "pointer" } as React.CSSProperties}>
@@ -1498,23 +1502,24 @@ TalentFlow AI Core`;
             {activeDialog === "bench_avail" && (
               <>
                 <div className="custom-dialog-header">
-                  Direct Internal Bench Consultants ({benchCandidates.length})
+                  Total Available Talent Supply ({allAvailableCandidates.length})
                 </div>
                 <div className="custom-dialog-body">
                   <p style={{ fontSize: "11px", color: "var(--color-text-secondary)", marginBottom: "12px" }}>
-                    Showing internal employees currently on unallocated status ready for instant placement.
+                    Showing all internal bench and subcontractor resources currently available for immediate placement.
                   </p>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
                     <thead>
                       <tr style={{ borderBottom: "0.5px solid var(--color-border-tertiary)", textAlign: "left" }}>
                         <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Consultant Name</th>
                         <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Extracted Skillset</th>
+                        <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Type</th>
                         <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Experience</th>
                         <th style={{ padding: "8px", color: "var(--color-text-secondary)", fontWeight: 600 }}>Availability</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {benchCandidates.slice(0, 8).map((cand: any, idx: number) => (
+                      {allAvailableCandidates.slice(0, 8).map((cand: any, idx: number) => (
                         <tr key={cand.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
                           <td style={{ padding: "10px 8px", fontWeight: 700, color: "var(--color-text-primary)" }}>{cand.name}</td>
                           <td style={{ padding: "10px 8px" }}>
@@ -1523,6 +1528,11 @@ TalentFlow AI Core`;
                                 <span key={s} className="tag tag-blue" style={{ fontSize: "9px" }}>{s}</span>
                               ))}
                             </div>
+                          </td>
+                          <td style={{ padding: "10px 8px" }}>
+                            <span className="tag" style={{ background: cand.vendorId ? "var(--color-purple-light)" : "var(--color-blue-light)", color: cand.vendorId ? "var(--color-purple)" : "var(--color-primary)", fontSize: "9px", fontWeight: 700 }}>
+                              {cand.vendorId ? "Subcontractor" : "Direct Bench"}
+                            </span>
                           </td>
                           <td style={{ padding: "10px 8px", fontWeight: 600 }}>{cand.experienceYears} Years</td>
                           <td style={{ padding: "10px 8px" }}>
