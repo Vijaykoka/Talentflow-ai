@@ -1519,7 +1519,7 @@ TalentFlow AI Core`;
                       </tr>
                     </thead>
                     <tbody>
-                      {allAvailableCandidates.slice(0, 8).map((cand: any, idx: number) => (
+                      {allAvailableCandidates.map((cand: any, idx: number) => (
                         <tr key={cand.id} style={{ borderBottom: "0.5px solid var(--color-border-tertiary)" }}>
                           <td style={{ padding: "10px 8px", fontWeight: 700, color: "var(--color-text-primary)" }}>{cand.name}</td>
                           <td style={{ padding: "10px 8px" }}>
