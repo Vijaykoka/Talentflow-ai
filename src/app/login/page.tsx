@@ -6,9 +6,18 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { IconBolt, IconSparkles, IconChartLine, IconUsers, IconLayoutKanban, IconUser, IconBriefcase } from "@tabler/icons-react";
+import { 
+  IconBolt, 
+  IconSparkles, 
+  IconChartLine, 
+  IconUsers, 
+  IconLayoutKanban, 
+  IconBriefcase,
+  IconKey,
+  IconBuildingStore,
+} from "@tabler/icons-react";
 
-type Role = "TA_TEAM" | "HIRING_TEAM";
+type Role = "SUPER_ADMIN" | "EXECUTIVE" | "TA_COORDINATOR" | "HIRING_MANAGER" | "AGENCY_PARTNER" | "TA_TEAM" | "HIRING_TEAM";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,7 +56,13 @@ export default function LoginPage() {
 
   const handleDemoLogin = async (role: Role) => {
     setIsLoading(true);
-    const demoEmail = role === "TA_TEAM" ? "ta-team@talentflow.ai" : "hiring-team@talentflow.ai";
+    let demoEmail = "super-admin@talentflow.ai";
+    if (role === "EXECUTIVE") demoEmail = "executive@talentflow.ai";
+    else if (role === "TA_COORDINATOR") demoEmail = "ta-coordinator@talentflow.ai";
+    else if (role === "HIRING_MANAGER") demoEmail = "hiring-manager@talentflow.ai";
+    else if (role === "AGENCY_PARTNER") demoEmail = "agency-partner@talentflow.ai";
+    else if (role === "TA_TEAM") demoEmail = "ta-team@talentflow.ai";
+    else if (role === "HIRING_TEAM") demoEmail = "hiring-team@talentflow.ai";
 
     try {
       await signIn("credentials", {
@@ -91,45 +106,128 @@ export default function LoginPage() {
             <p style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginTop: "4px" }}>Sign in to access your dashboard</p>
           </div>
 
-          <div style={{ marginBottom: "16px" }}>
-            <Label style={{ fontSize: "12px", marginBottom: "8px", display: "block" }}>Quick Demo Login</Label>
+          <div style={{ marginBottom: "20px" }}>
+            <Label style={{ fontSize: "12px", marginBottom: "8px", display: "block", fontWeight: 600 }}>Quick Demo Logins</Label>
+            
+            {/* Super Admin Full Access */}
+            <button
+              type="button"
+              onClick={() => handleDemoLogin("SUPER_ADMIN")}
+              disabled={isLoading}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                borderRadius: "var(--radius)",
+                border: selectedRole === "SUPER_ADMIN" ? "2px solid var(--color-primary)" : "1px solid var(--color-border-tertiary)",
+                background: selectedRole === "SUPER_ADMIN" ? "var(--color-blue-light)" : "var(--color-background-primary)",
+                cursor: isLoading ? "not-allowed" : "pointer",
+                transition: "all 0.2s",
+                opacity: isLoading ? 0.6 : 1,
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                textAlign: "left",
+                marginBottom: "8px",
+              }}
+            >
+              <div style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "6px",
+                background: "rgba(226, 75, 74, 0.1)",
+                color: "var(--color-error)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}>
+                <IconKey size={18} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", display: "block" }}>Super Admin (Full Access)</span>
+                <span style={{ fontSize: "10px", color: "var(--color-text-secondary)", display: "block" }}>Full system configuration, margins, and control</span>
+              </div>
+            </button>
+
+            {/* 2x2 Grid for other roles */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin("TA_TEAM")}
-                disabled={isLoading}
-                style={{
-                  padding: "12px 8px",
-                  borderRadius: "var(--radius)",
-                  border: selectedRole === "TA_TEAM" ? "2px solid var(--color-primary)" : "1px solid var(--color-border-tertiary)",
-                  background: selectedRole === "TA_TEAM" ? "var(--color-blue-light)" : "var(--color-background-primary)",
-                  cursor: isLoading ? "not-allowed" : "pointer",
-                  transition: "all 0.2s",
-                  opacity: isLoading ? 0.6 : 1,
-                }}
-              >
-                <IconUser size={18} style={{ margin: "0 auto 4px", display: "block", color: "var(--color-primary)" }} />
-                <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-primary)", display: "block" }}>TA Team</span>
-                <span style={{ fontSize: "9px", color: "var(--color-text-secondary)" }}>Talent Acquisition</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin("HIRING_TEAM")}
-                disabled={isLoading}
-                style={{
-                  padding: "12px 8px",
-                  borderRadius: "var(--radius)",
-                  border: selectedRole === "HIRING_TEAM" ? "2px solid var(--color-primary)" : "1px solid var(--color-border-tertiary)",
-                  background: selectedRole === "HIRING_TEAM" ? "var(--color-blue-light)" : "var(--color-background-primary)",
-                  cursor: isLoading ? "not-allowed" : "pointer",
-                  transition: "all 0.2s",
-                  opacity: isLoading ? 0.6 : 1,
-                }}
-              >
-                <IconBriefcase size={18} style={{ margin: "0 auto 4px", display: "block", color: "var(--color-primary)" }} />
-                <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-primary)", display: "block" }}>Hiring Team</span>
-                <span style={{ fontSize: "9px", color: "var(--color-text-secondary)" }}>Department</span>
-              </button>
+              {[
+                {
+                  role: "EXECUTIVE" as Role,
+                  label: "Executive",
+                  sub: "Full Read-Only",
+                  desc: "Margins & TDAF",
+                  icon: IconChartLine,
+                  bg: "rgba(99, 153, 34, 0.1)",
+                  color: "var(--color-success-dark)"
+                },
+                {
+                  role: "TA_COORDINATOR" as Role,
+                  label: "TA Coordinator",
+                  sub: "Candidate Focus",
+                  desc: "Bench & Locations",
+                  icon: IconUsers,
+                  bg: "rgba(33, 150, 243, 0.1)",
+                  color: "var(--color-primary)"
+                },
+                {
+                  role: "HIRING_MANAGER" as Role,
+                  label: "Hiring Manager",
+                  sub: "Client Focus",
+                  desc: "Demands & Feedback",
+                  icon: IconBriefcase,
+                  bg: "rgba(239, 159, 39, 0.1)",
+                  color: "var(--color-warning-dark)"
+                },
+                {
+                  role: "AGENCY_PARTNER" as Role,
+                  label: "Agency Partner",
+                  sub: "External Sourced",
+                  desc: "Sandboxed Bench",
+                  icon: IconBuildingStore,
+                  bg: "rgba(156, 39, 176, 0.1)",
+                  color: "var(--color-purple)"
+                }
+              ].map((item) => (
+                <button
+                  key={item.role}
+                  type="button"
+                  onClick={() => handleDemoLogin(item.role)}
+                  disabled={isLoading}
+                  style={{
+                    padding: "10px 8px",
+                    borderRadius: "var(--radius)",
+                    border: selectedRole === item.role ? "2px solid var(--color-primary)" : "1px solid var(--color-border-tertiary)",
+                    background: selectedRole === item.role ? "var(--color-blue-light)" : "var(--color-background-primary)",
+                    cursor: isLoading ? "not-allowed" : "pointer",
+                    transition: "all 0.2s",
+                    opacity: isLoading ? 0.6 : 1,
+                    textAlign: "left",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px"
+                  }}
+                >
+                  <div style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
+                    background: item.bg,
+                    color: item.color,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "4px"
+                  }}>
+                    <item.icon size={16} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-primary)", display: "block" }}>{item.label}</span>
+                    <span style={{ fontSize: "9px", color: "var(--color-text-secondary)", display: "block", fontWeight: 500 }}>{item.sub}</span>
+                    <span style={{ fontSize: "8px", color: "var(--color-text-tertiary)", display: "block" }}>{item.desc}</span>
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -175,8 +273,11 @@ export default function LoginPage() {
                   cursor: "pointer",
                 }}
               >
-                <option value="TA_TEAM">TA Team (Talent Acquisition)</option>
-                <option value="HIRING_TEAM">Hiring Team (Department)</option>
+                <option value="SUPER_ADMIN">Super Admin (Full Access)</option>
+                <option value="EXECUTIVE">Executive (Read-Only)</option>
+                <option value="TA_COORDINATOR">TA Coordinator (Sourcing)</option>
+                <option value="HIRING_MANAGER">Hiring Manager (Department)</option>
+                <option value="AGENCY_PARTNER">Agency Partner (External)</option>
               </select>
             </div>
 

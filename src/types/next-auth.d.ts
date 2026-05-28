@@ -6,7 +6,7 @@ declare module "next-auth" {
       id: string;
       name?: string | null;
       email?: string | null;
-      role: "TA_TEAM" | "HIRING_TEAM";
+      role: "SUPER_ADMIN" | "EXECUTIVE" | "TA_COORDINATOR" | "HIRING_MANAGER" | "AGENCY_PARTNER" | "TA_TEAM" | "HIRING_TEAM";
     };
   }
 
@@ -14,13 +14,13 @@ declare module "next-auth" {
     id: string;
     name: string;
     email: string;
-    role: "TA_TEAM" | "HIRING_TEAM";
+    role: "SUPER_ADMIN" | "EXECUTIVE" | "TA_COORDINATOR" | "HIRING_MANAGER" | "AGENCY_PARTNER" | "TA_TEAM" | "HIRING_TEAM";
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
     id: string;
-    role: "TA_TEAM" | "HIRING_TEAM";
+    role: "SUPER_ADMIN" | "EXECUTIVE" | "TA_COORDINATOR" | "HIRING_MANAGER" | "AGENCY_PARTNER" | "TA_TEAM" | "HIRING_TEAM";
   }
 }

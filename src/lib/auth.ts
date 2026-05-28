@@ -2,6 +2,8 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 
+type UserRole = "SUPER_ADMIN" | "EXECUTIVE" | "TA_COORDINATOR" | "HIRING_MANAGER" | "AGENCY_PARTNER" | "TA_TEAM" | "HIRING_TEAM";
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET || "talentflow-ai-fallback-secret-2026-production",
   providers: [
@@ -19,7 +21,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const email = credentials.email as string;
         const password = credentials.password as string;
-        const role = credentials.role as "TA_TEAM" | "HIRING_TEAM";
+        const role = credentials.role as UserRole;
 
         if (!email.includes("@")) {
           return null;
@@ -44,7 +46,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role as "TA_TEAM" | "HIRING_TEAM",
+          role: user.role as UserRole,
         };
       },
     }),
@@ -63,7 +65,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as "TA_TEAM" | "HIRING_TEAM";
+        session.user.role = token.role as UserRole;
       }
       return session;
     },

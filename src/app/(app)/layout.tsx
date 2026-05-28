@@ -73,23 +73,45 @@ const navSections = [
   },
 ];
 
-const HIRING_MANAGER_TABS: TabId[] = ["tdaf", "demand", "createDemand", "matching", "feedback"];
-
 function SidebarNav() {
   const { activeTab, setActiveTab } = useTab();
   const { data: session } = useSession();
   const userRole = session?.user?.role;
 
-  const isHiringManager = userRole === "HIRING_TEAM";
+  const getAllowedTabs = (role: string | undefined): TabId[] => {
+    switch (role) {
+      case "SUPER_ADMIN":
+      case "TA_TEAM":
+        return ["tdaf", "demand", "createDemand", "supply", "matching", "projects", "margin", "pipeline", "feedback", "skillgap", "locationmatch", "client", "vendor", "activity"];
+      case "EXECUTIVE":
+        return ["tdaf", "demand", "supply", "matching", "projects", "margin", "pipeline", "feedback", "skillgap", "locationmatch", "client", "vendor", "activity"];
+      case "TA_COORDINATOR":
+        return ["tdaf", "demand", "createDemand", "supply", "matching", "projects", "pipeline", "feedback", "skillgap", "locationmatch", "activity"];
+      case "HIRING_MANAGER":
+      case "HIRING_TEAM":
+        return ["tdaf", "demand", "createDemand", "matching", "pipeline", "feedback", "activity"];
+      case "AGENCY_PARTNER":
+        return ["demand", "supply", "matching", "pipeline", "feedback"];
+      default:
+        return ["tdaf", "demand", "createDemand", "supply", "matching", "projects", "margin", "pipeline", "feedback", "skillgap", "locationmatch", "client", "vendor", "activity"];
+    }
+  };
 
-  const visibleNavSections = isHiringManager
-    ? navSections
-        .map(section => ({
-          ...section,
-          items: section.items.filter(item => HIRING_MANAGER_TABS.includes(item.id)),
-        }))
-        .filter(section => section.items.length > 0)
-    : navSections;
+  const allowedTabs = getAllowedTabs(userRole);
+
+  // Auto-redirect if landing on an unauthorized tab
+  useEffect(() => {
+    if (userRole && !allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0]);
+    }
+  }, [userRole, allowedTabs, activeTab, setActiveTab]);
+
+  const visibleNavSections = navSections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => allowedTabs.includes(item.id)),
+    }))
+    .filter(section => section.items.length > 0);
 
   return (
     <nav className="sidebar">
