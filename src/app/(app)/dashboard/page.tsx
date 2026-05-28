@@ -24,6 +24,14 @@ import {
   IconTrendingUp,
   IconChartPie,
   IconUsers,
+  IconChevronLeft,
+  IconChevronRight,
+  IconBell,
+  IconActivity,
+  IconChecks,
+  IconRefresh,
+  IconInfoCircle,
+  IconCheck,
 } from "@tabler/icons-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -60,7 +68,7 @@ interface Stats {
   topVendors: any[];
   skillDistribution: { skill: string; count: number }[];
   marginByVendor: { vendorId: string; vendorName: string; margin: number }[];
-  hotDemands: { id: string; title: string; priority: string; daysAging: number; status: string; location: string }[];
+  hotDemands: { id: string; title: string; priority: string; daysAging: number; status: string; location: string; clientName?: string }[];
   hotTalents: { id: string; name: string; skills: string; matchScore: number }[];
   allHires: any[];
   allVendors: any[];
@@ -126,23 +134,86 @@ export default function DashboardPage() {
 function DemandTab() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<"open" | "revenue" | "time_fill" | "hot">("open");
   const [openDemandsList, setOpenDemandsList] = useState<any[]>([]);
   const [loadingDemands, setLoadingDemands] = useState(false);
+
+  // New Drawer States
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [activeDrawerTab, setActiveDrawerTab] = useState<"sla" | "matches" | "logs">("sla");
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [matchesList, setMatchesList] = useState<any[]>([]);
+  const [loadingMatches, setLoadingMatches] = useState(false);
+
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true);
+    try {
+      const res = await fetch("/api/notifications");
+      const data = await res.json();
+      setNotifications(data.notifications || []);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const fetchMatches = async () => {
+    setLoadingMatches(true);
+    try {
+      const res = await fetch("/api/feedback");
+      const data = await res.json();
+      setMatchesList(data || []);
+    } catch (err) {
+      console.error("Failed to fetch matches:", err);
+    } finally {
+      setLoadingMatches(false);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAll: true }),
+      });
+      fetchNotifications();
+    } catch (err) {
+      console.error("Failed to mark all as read:", err);
+    }
+  };
+
+  const handlePingManager = (demandTitle: string) => {
+    alert(`[PING SENT] Sourced alert ping sent to hiring team for demand: "${demandTitle}"`);
+  };
 
   useEffect(() => {
     fetch("/api/stats")
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(console.error);
+
+    fetchNotifications();
+    fetchMatches();
+
+    const interval = setInterval(() => {
+      fetchNotifications();
+      fetchMatches();
+    }, 10000); // poll every 10 seconds
+
+    return () => clearInterval(interval);
   }, []);
 
-  const handleOpenDemandsClick = async () => {
+  const handleKpiClick = async (type: "open" | "revenue" | "time_fill" | "hot") => {
+    setDialogType(type);
     setIsDialogOpen(true);
     setLoadingDemands(true);
     try {
       const res = await fetch("/api/demands");
       const data = await res.json();
-      setOpenDemandsList(data.filter((d: any) => d.status === "OPEN"));
+      setOpenDemandsList(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -150,11 +221,10 @@ function DemandTab() {
     }
   };
 
-  if (!stats) return <LoadingState />;
+  if (!stats) return null;
 
   return (
     <div>
-      {/* Premium Hero Header */}
       <div className="premium-hero-header">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
           <div>
@@ -173,11 +243,10 @@ function DemandTab() {
         </div>
       </div>
 
-      {/* KPI Grid */}
       <div className="kpi-grid">
         <div 
           className="premium-kpi-card" 
-          onClick={handleOpenDemandsClick}
+          onClick={() => handleKpiClick("open")}
           style={{ cursor: "pointer", "--kpi-color": "var(--color-primary)" } as React.CSSProperties}
         >
           <IconBriefcase className="premium-kpi-icon" size={44} />
@@ -191,7 +260,11 @@ function DemandTab() {
           </div>
         </div>
         
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-error)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => handleKpiClick("revenue")}
+          style={{ cursor: "pointer", "--kpi-color": "var(--color-error)" } as React.CSSProperties}
+        >
           <IconTrendingUp className="premium-kpi-icon" size={44} />
           <div className="kpi-label">Revenue at Risk</div>
           <div className="kpi-val" style={{ color: "var(--color-error-dark)" }}>{fmt(stats.revenueAtRisk)}</div>
@@ -203,7 +276,11 @@ function DemandTab() {
           </div>
         </div>
 
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-success)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => handleKpiClick("time_fill")}
+          style={{ cursor: "pointer", "--kpi-color": "var(--color-success)" } as React.CSSProperties}
+        >
           <IconClock className="premium-kpi-icon" size={44} />
           <div className="kpi-label">Avg Time-to-Fill</div>
           <div className="kpi-val" style={{ color: "var(--color-success-dark)" }}>{stats.avgTimeToFill || 9}d</div>
@@ -215,7 +292,11 @@ function DemandTab() {
           </div>
         </div>
 
-        <div className="premium-kpi-card" style={{ "--kpi-color": "var(--color-warning)" } as React.CSSProperties}>
+        <div 
+          className="premium-kpi-card" 
+          onClick={() => handleKpiClick("hot")}
+          style={{ cursor: "pointer", "--kpi-color": "var(--color-warning)" } as React.CSSProperties}
+        >
           <IconFlame className="premium-kpi-icon" size={44} />
           <div className="kpi-label">Hot Demands</div>
           <div className="kpi-val" style={{ color: "var(--color-warning-dark)" }}>{stats.hotDemands.length}</div>
@@ -229,7 +310,6 @@ function DemandTab() {
       </div>
 
       <div className="two-col">
-        {/* Funnel Graph */}
         <div className="card-wireframe glass-card-premium" style={{ border: "1px solid var(--color-border-tertiary)" }}>
           <div className="card-title-wireframe" style={{ borderBottom: "0.5px solid var(--color-border-tertiary)", paddingBottom: "10px" }}>
             <IconChartBar size={16} style={{ color: "var(--color-primary)" }} /> Hiring Pipeline Funnel
@@ -339,66 +419,419 @@ function DemandTab() {
           </div>
         </div>
       </div>
-      
+
+      {/* Collapsible Right-Side Popout Drawer Panel */}
+      <div className={`right-drawer-panel ${isDrawerOpen ? "open" : ""}`}>
+        {/* Toggle Tab sticking out from the side */}
+        <button 
+          className="right-drawer-toggle" 
+          onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+          title={isDrawerOpen ? "Close Intelligence Drawer" : "Open Intelligence Drawer"}
+        >
+          {isDrawerOpen ? <IconChevronRight size={16} /> : <IconChevronLeft size={16} />}
+        </button>
+
+        <div className="right-drawer-content">
+          <div className="right-drawer-header">
+            <div className="right-drawer-title-area">
+              <h3 className="right-drawer-title">Demand Intelligence Center</h3>
+              <div className="right-drawer-live">
+                <span className="live-pulse-dot"></span>
+                <span>REAL-TIME INSIGHTS CHANNEL</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => setIsDrawerOpen(false)}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-secondary)" }}
+            >
+              <IconChevronRight size={20} />
+            </button>
+          </div>
+
+          {/* Sub Navigation Tabs */}
+          <div className="right-drawer-tab-nav">
+            <button 
+              className={`right-drawer-tab ${activeDrawerTab === "sla" ? "active" : ""}`}
+              onClick={() => setActiveDrawerTab("sla")}
+            >
+              SLA Warnings ({stats.hotDemands.length})
+            </button>
+            <button 
+              className={`right-drawer-tab ${activeDrawerTab === "matches" ? "active" : ""}`}
+              onClick={() => setActiveDrawerTab("matches")}
+            >
+              Match Queue ({matchesList.length})
+            </button>
+            <button 
+              className={`right-drawer-tab ${activeDrawerTab === "logs" ? "active" : ""}`}
+              onClick={() => setActiveDrawerTab("logs")}
+            >
+              Live Logs ({notifications.filter(n => !n.read).length})
+            </button>
+          </div>
+
+          <div className="right-drawer-body">
+            {/* SLA Warnings Tab */}
+            {activeDrawerTab === "sla" && (
+              <>
+                {stats.hotDemands.length === 0 ? (
+                  <div className="drawer-empty-state">
+                    <IconAlertCircle size={36} />
+                    <div className="drawer-empty-title">All Demands Healthy</div>
+                    <div className="drawer-empty-desc">No demands are currently breaching or approaching SLA limits.</div>
+                  </div>
+                ) : (
+                  stats.hotDemands.map(demand => {
+                    const days = demand.daysAging;
+                    const isCritical = days > 7; // SLA Breached >7 days
+                    
+                    return (
+                      <div key={demand.id} className={`drawer-alert-card ${isCritical ? "critical" : "warning"}`}>
+                        <div className="drawer-alert-header">
+                          <span className="drawer-alert-title">{demand.title}</span>
+                          <span className={`tag ${isCritical ? "tag-red" : "tag-amber"}`} style={{ fontSize: "9px", padding: "1px 5px" }}>
+                            {isCritical ? "SLA Breached" : "Approaching SLA"}
+                          </span>
+                        </div>
+                        <div className="drawer-alert-meta">
+                          <span>Client: <strong>{demand.clientName}</strong></span>
+                          <span>Aging: <strong style={{ color: isCritical ? "var(--color-error-dark)" : "var(--color-warning-dark)" }}>{days} days</strong></span>
+                        </div>
+                        <div style={{ height: "4px", width: "100%", background: "var(--color-border-tertiary)", borderRadius: "2px", marginTop: "4px", overflow: "hidden" }}>
+                          <div 
+                            style={{ 
+                              height: "100%", 
+                              width: `${Math.min(100, (days / 14) * 100)}%`, 
+                              background: isCritical ? "var(--color-error)" : "var(--color-warning)" 
+                            }} 
+                          />
+                        </div>
+                        <button className="drawer-alert-action-btn" style={{ marginTop: "4px" }} onClick={() => handlePingManager(demand.title)}>
+                          <IconBell size={12} /> Ping Hiring Manager
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </>
+            )}
+
+            {/* Match Queue Tab */}
+            {activeDrawerTab === "matches" && (
+              <>
+                {loadingMatches && matchesList.length === 0 ? (
+                  <div style={{ display: "flex", justifyContent: "center", padding: "32px" }}>
+                    <div style={{ width: "24px", height: "24px", border: "2px solid var(--color-border-tertiary)", borderTopColor: "var(--color-primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                  </div>
+                ) : matchesList.length === 0 ? (
+                  <div className="drawer-empty-state">
+                    <IconChecks size={36} />
+                    <div className="drawer-empty-title">Queue Clear</div>
+                    <div className="drawer-empty-desc">Sourcing matching engine is active. Candidates are automatically parsed.</div>
+                  </div>
+                ) : (
+                  matchesList.slice(0, 8).map(match => {
+                    const score = match.matchScore || 75;
+                    const scoreColor = score >= 85 ? "var(--color-success-dark)" : score >= 70 ? "var(--color-warning-dark)" : "var(--color-text-secondary)";
+                    const scoreBg = score >= 85 ? "var(--color-green-light)" : score >= 70 ? "var(--color-amber-light)" : "var(--color-background-tertiary)";
+                    
+                    return (
+                      <div key={match.id} className="drawer-alert-card" style={{ borderLeft: "3px solid var(--color-primary)" }}>
+                        <div className="drawer-alert-header">
+                          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <span className="drawer-alert-title" style={{ fontWeight: 700 }}>{match.candidate?.name}</span>
+                            <span style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>{match.demand?.title}</span>
+                          </div>
+                          <span className="tag" style={{ background: scoreBg, color: scoreColor, fontSize: "10px", fontWeight: "bold" }}>
+                            {score}% Match
+                          </span>
+                        </div>
+                        {match.matchReason && (
+                          <div style={{ fontSize: "11px", color: "var(--color-text-secondary)", background: "var(--color-background-tertiary)", padding: "6px 8px", borderRadius: "4px", fontStyle: "italic", marginTop: "4px" }}>
+                            &ldquo;{match.matchReason.substring(0, 100)}...&rdquo;
+                          </div>
+                        )}
+                        <div className="drawer-alert-meta" style={{ marginTop: "6px" }}>
+                          <span>Status: <strong style={{ color: "var(--color-primary)" }}>{match.status}</strong></span>
+                          <span>Vendor: <strong>{match.demand?.vendor?.name || "Direct"}</strong></span>
+                        </div>
+                        <button className="drawer-alert-action-btn" style={{ marginTop: "4px" }} onClick={() => alert("Redirecting to Interview & Assessment Hub tab...")}>
+                          <IconClock size={12} /> Schedule Panel
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </>
+            )}
+
+            {/* Live Logs (System Notifications) Tab */}
+            {activeDrawerTab === "logs" && (
+              <>
+                {loadingNotifications && notifications.length === 0 ? (
+                  <div style={{ display: "flex", justifyContent: "center", padding: "32px" }}>
+                    <div style={{ width: "24px", height: "24px", border: "2px solid var(--color-border-tertiary)", borderTopColor: "var(--color-primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="drawer-empty-state">
+                    <IconBell size={36} />
+                    <div className="drawer-empty-title">All Caught Up</div>
+                    <div className="drawer-empty-desc">System logs and auto-match triggers will appear here in real-time.</div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {notifications.map(notif => {
+                      const isUnread = !notif.read;
+                      
+                      return (
+                        <div key={notif.id} className={`notif-row ${isUnread ? "unread" : ""}`}>
+                          <div 
+                            className="notif-icon-box"
+                            style={{
+                              background: notif.type === "AUTO_MATCH" ? "var(--color-blue-light)" 
+                                        : notif.type === "HIRE" ? "var(--color-green-light)" 
+                                        : notif.type === "SYSTEM" ? "var(--color-purple-light)" 
+                                        : "var(--color-background-tertiary)",
+                              color: notif.type === "AUTO_MATCH" ? "var(--color-primary)" 
+                                   : notif.type === "HIRE" ? "var(--color-success-dark)" 
+                                   : notif.type === "SYSTEM" ? "var(--color-purple)" 
+                                   : "var(--color-text-secondary)"
+                            }}
+                          >
+                            {notif.type === "AUTO_MATCH" && <IconBolt size={16} />}
+                            {notif.type === "HIRE" && <IconCheck size={16} />}
+                            {notif.type === "SYSTEM" && <IconActivity size={16} />}
+                            {notif.type !== "AUTO_MATCH" && notif.type !== "HIRE" && notif.type !== "SYSTEM" && <IconInfoCircle size={16} />}
+                          </div>
+                          <div className="notif-details">
+                            <span className="notif-title">{notif.title}</span>
+                            <p className="notif-msg">{notif.message}</p>
+                            <span className="notif-time">{new Date(notif.timestamp).toLocaleTimeString()}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="drawer-footer">
+            <span style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>
+              {activeDrawerTab === "logs" ? `${notifications.filter(n => !n.read).length} unread logs` 
+              : activeDrawerTab === "matches" ? `${matchesList.length} matching matches` 
+              : `${stats.hotDemands.length} hot SLA points`}
+            </span>
+            {activeDrawerTab === "logs" && notifications.some(n => !n.read) && (
+              <button 
+                className="drawer-alert-action-btn" 
+                style={{ background: "var(--color-primary)", color: "#fff", borderColor: "var(--color-primary)" }}
+                onClick={handleMarkAllRead}
+              >
+                <IconChecks size={12} /> Mark all read
+              </button>
+            )}
+            <button className="drawer-alert-action-btn" onClick={() => { fetchNotifications(); fetchMatches(); }}>
+              <IconRefresh size={12} /> Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="custom-dialog-content">
           <DialogHeader className="custom-dialog-header">
-            <DialogTitle>All Open Demands ({openDemandsList.length})</DialogTitle>
+            <DialogTitle>
+              {dialogType === "open" && `All Open Demands (${openDemandsList.filter(d => d.status === "OPEN").length})`}
+              {dialogType === "revenue" && `Revenue at Risk Contract Breakdown (${fmt(stats.revenueAtRisk)})`}
+              {dialogType === "time_fill" && `Historical Requisitions Fulfillment Cycle`}
+              {dialogType === "hot" && `Priority Hot Requisitions (${openDemandsList.filter(d => d.status === "OPEN" && (d.priority === "HIGH" || d.priority === "MEDIUM")).length})`}
+            </DialogTitle>
           </DialogHeader>
-          <div className="custom-dialog-body">
+          <div className="custom-dialog-body" style={{ maxHeight: "60vh", overflowY: "auto" }}>
             {loadingDemands ? (
               <div style={{ display: "flex", justifyContent: "center", padding: "32px" }}>
                 <div style={{ width: "24px", height: "24px", border: "2px solid var(--color-border-tertiary)", borderTopColor: "var(--color-primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
               </div>
             ) : (
               <div>
-                {openDemandsList.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No open demands found.</div>
-                ) : (
-                  openDemandsList.map(demand => {
-                    const atMatch = demand.title.match(/\s+at\s+([A-Za-z0-9\s]+)$/i);
-                    const extractedClient = atMatch ? atMatch[1].trim() : null;
-                    const clientName = demand.client?.name || extractedClient || "Google";
-                    const cleanTitle = demand.title.replace(/\s+at\s+[A-Za-z0-9\s]+$/i, "").trim();
-                    const displayTitle = `${cleanTitle} for ${clientName} client`;
+                
+                {dialogType === "open" && (
+                  <div>
+                    {openDemandsList.filter(d => d.status === "OPEN").length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No open demands found.</div>
+                    ) : (
+                      openDemandsList.filter(d => d.status === "OPEN").map(demand => {
+                        const atMatch = demand.title.match(/\s+at\s+([A-Za-z0-9\s]+)$/i);
+                        const extractedClient = atMatch ? atMatch[1].trim() : null;
+                        const clientName = demand.client?.name || extractedClient || "Google";
+                        const cleanTitle = demand.title.replace(/\s+at\s+[A-Za-z0-9\s]+$/i, "").trim();
+                        const displayTitle = `${cleanTitle} for ${clientName} client`;
 
-                    const clientMin = demand.rateMin;
-                    const clientMax = demand.rateMax;
-                    const resourceMin = Math.round(clientMin * 0.7);
-                    const resourceMax = Math.round(clientMax * 0.7);
+                        const clientMin = demand.rateMin;
+                        const clientMax = demand.rateMax;
+                        const resourceMin = Math.round(clientMin * 0.7);
+                        const resourceMax = Math.round(clientMax * 0.7);
 
-                    return (
-                      <div key={demand.id} className="popup-row" style={{ padding: "12px 16px" }}>
-                        <div
-                          className="popup-avatar small"
-                          style={{ background: demand.priority === "HIGH" ? "var(--color-error)" : demand.priority === "MEDIUM" ? "var(--color-warning)" : "var(--color-success)", marginTop: "4px" }}
-                        />
-                        <div className="popup-info" style={{ flex: 1 }}>
-                          <div className="popup-title" style={{ fontWeight: 600, fontSize: "13px" }}>{displayTitle}</div>
-                          <div className="popup-sub" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", marginTop: "2px" }}>
-                            <IconBuildingStore size={12} /> <span>{demand.vendor?.name || "Internal Direct"}</span>
-                            <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
-                            <span>{demand.location || "Remote / Hybrid"}</span>
+                        return (
+                          <div key={demand.id} className="popup-row" style={{ padding: "12px 16px" }}>
+                            <div
+                              className="popup-avatar small"
+                              style={{ background: demand.priority === "HIGH" ? "var(--color-error)" : demand.priority === "MEDIUM" ? "var(--color-warning)" : "var(--color-success)", marginTop: "4px" }}
+                            />
+                            <div className="popup-info" style={{ flex: 1 }}>
+                              <div className="popup-title" style={{ fontWeight: 600, fontSize: "13px" }}>{displayTitle}</div>
+                              <div className="popup-sub" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", marginTop: "2px" }}>
+                                <IconBuildingStore size={12} /> <span>{demand.vendor?.name || "Internal Direct"}</span>
+                                <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
+                                <span>{demand.location || "Remote / Hybrid"}</span>
+                              </div>
+                            </div>
+                            <div className="popup-stat" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", minWidth: "180px", paddingLeft: "12px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span className="popup-tag" style={{ background: demand.priority === "HIGH" ? "var(--color-red-light)" : demand.priority === "MEDIUM" ? "var(--color-amber-light)" : "var(--color-green-light)", color: demand.priority === "HIGH" ? "var(--color-error-dark)" : demand.priority === "MEDIUM" ? "var(--color-warning-dark)" : "var(--color-success-dark)", fontSize: "10px", padding: "1px 6px" }}>
+                                  {demand.priority === "HIGH" ? "High" : demand.priority === "MEDIUM" ? "Medium" : "Low"}
+                                </span>
+                                <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-text-tertiary)" }}>Billing:</span>
+                                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-primary)" }}>
+                                  ${clientMin}-${clientMax}/hr
+                                </span>
+                              </div>
+                              <div style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-text-secondary)" }}>
+                                Resource Pay: <span style={{ color: "var(--color-success-dark)", fontWeight: 600 }}>${resourceMin}-${resourceMax}/hr</span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="popup-stat" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", minWidth: "180px", paddingLeft: "12px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span className="popup-tag" style={{ background: demand.priority === "HIGH" ? "var(--color-red-light)" : demand.priority === "MEDIUM" ? "var(--color-amber-light)" : "var(--color-green-light)", color: demand.priority === "HIGH" ? "var(--color-error-dark)" : demand.priority === "MEDIUM" ? "var(--color-warning-dark)" : "var(--color-success-dark)", fontSize: "10px", padding: "1px 6px" }}>
-                              {demand.priority === "HIGH" ? "High" : demand.priority === "MEDIUM" ? "Medium" : "Low"}
-                            </span>
-                            <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-text-tertiary)" }}>Billing:</span>
-                            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-primary)" }}>
-                              ${clientMin}-${clientMax}/hr
-                            </span>
-                          </div>
-                          <div style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-text-secondary)" }}>
-                            Resource Pay: <span style={{ color: "var(--color-success-dark)", fontWeight: 600 }}>${resourceMin}-${resourceMax}/hr</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
+                        );
+                      })
+                    )}
+                  </div>
                 )}
+
+                {dialogType === "revenue" && (
+                  <div>
+                    {openDemandsList.filter(d => d.status === "OPEN").length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No active contracts at risk.</div>
+                    ) : (
+                      openDemandsList.filter(d => d.status === "OPEN").map(demand => {
+                        const atMatch = demand.title.match(/\s+at\s+([A-Za-z0-9\s]+)$/i);
+                        const extractedClient = atMatch ? atMatch[1].trim() : null;
+                        const clientName = demand.client?.name || extractedClient || "Google";
+                        const cleanTitle = demand.title.replace(/\s+at\s+[A-Za-z0-9\s]+$/i, "").trim();
+
+                        const contractRisk = demand.rateMax * 160 * 12;
+
+                        return (
+                          <div key={demand.id} className="popup-row" style={{ padding: "12px 16px" }}>
+                            <div className="popup-avatar" style={{ background: "var(--color-red-light)", color: "var(--color-error)" }}>
+                              <IconTrendingUp size={16} />
+                            </div>
+                            <div className="popup-info" style={{ flex: 1 }}>
+                              <div className="popup-title" style={{ fontWeight: 600, fontSize: "13px" }}>{cleanTitle}</div>
+                              <div className="popup-sub" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", marginTop: "2px" }}>
+                                <span>Client Partner: <strong>{clientName}</strong></span>
+                                <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
+                                <span>Max Billing: <strong>${demand.rateMax}/hr</strong></span>
+                              </div>
+                            </div>
+                            <div className="popup-stat" style={{ textAlign: "right", minWidth: "120px" }}>
+                              <span className="popup-stat-val" style={{ color: "var(--color-error-dark)", fontSize: "13px", fontWeight: "700" }}>
+                                {fmt(contractRisk)}
+                              </span>
+                              <span className="popup-stat-label">Annualized Risk</span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {dialogType === "time_fill" && (
+                  <div>
+                    {openDemandsList.filter(d => d.status === "FILLED").length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No filled requisitions found.</div>
+                    ) : (
+                      openDemandsList.filter(d => d.status === "FILLED").map(demand => {
+                        const atMatch = demand.title.match(/\s+at\s+([A-Za-z0-9\s]+)$/i);
+                        const extractedClient = atMatch ? atMatch[1].trim() : null;
+                        const clientName = demand.client?.name || extractedClient || "Google";
+                        const cleanTitle = demand.title.replace(/\s+at\s+[A-Za-z0-9\s]+$/i, "").trim();
+
+                        const created = new Date(demand.createdAt).getTime();
+                        const updated = new Date(demand.updatedAt).getTime();
+                        const days = Math.max(1, Math.round((updated - created) / (1000 * 3600 * 24)));
+
+                        return (
+                          <div key={demand.id} className="popup-row" style={{ padding: "12px 16px" }}>
+                            <div className="popup-avatar" style={{ background: "var(--color-green-light)", color: "var(--color-success-dark)" }}>
+                              <IconClock size={16} />
+                            </div>
+                            <div className="popup-info" style={{ flex: 1 }}>
+                              <div className="popup-title" style={{ fontWeight: 600, fontSize: "13px" }}>{cleanTitle}</div>
+                              <div className="popup-sub" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", marginTop: "2px" }}>
+                                <span>Client: <strong>{clientName}</strong></span>
+                                <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
+                                <span>Fulfillment: <strong>{new Date(demand.updatedAt).toLocaleDateString()}</strong></span>
+                              </div>
+                            </div>
+                            <div className="popup-stat" style={{ textAlign: "right", minWidth: "120px" }}>
+                              <span className="popup-stat-val" style={{ color: "var(--color-success-dark)", fontSize: "14px", fontWeight: "700" }}>
+                                {days} days
+                              </span>
+                              <span className="popup-stat-label">Time-to-Fill Cycle</span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {dialogType === "hot" && (
+                  <div>
+                    {openDemandsList.filter(d => d.status === "OPEN" && (d.priority === "HIGH" || d.priority === "MEDIUM")).length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)" }}>No active high-priority demands.</div>
+                    ) : (
+                      [...openDemandsList.filter(d => d.status === "OPEN" && (d.priority === "HIGH" || d.priority === "MEDIUM"))]
+                        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                        .map(demand => {
+                          const atMatch = demand.title.match(/\s+at\s+([A-Za-z0-9\s]+)$/i);
+                          const extractedClient = atMatch ? atMatch[1].trim() : null;
+                          const clientName = demand.client?.name || extractedClient || "Google";
+                          const cleanTitle = demand.title.replace(/\s+at\s+[A-Za-z0-9\s]+$/i, "").trim();
+
+                          const daysAging = Math.floor((Date.now() - new Date(demand.createdAt).getTime()) / (1000 * 3600 * 24));
+
+                          return (
+                            <div key={demand.id} className="popup-row" style={{ padding: "12px 16px" }}>
+                              <div className="popup-avatar" style={{ background: "var(--color-amber-light)", color: "var(--color-warning-dark)" }}>
+                                <IconFlame size={16} />
+                              </div>
+                              <div className="popup-info" style={{ flex: 1 }}>
+                                <div className="popup-title" style={{ fontWeight: 600, fontSize: "13px" }}>{cleanTitle}</div>
+                                <div className="popup-sub" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", marginTop: "2px" }}>
+                                  <span>Client: <strong>{clientName}</strong></span>
+                                  <span style={{ color: "var(--color-border-tertiary)" }}>•</span>
+                                  <span>Vendor: <strong>{demand.vendor?.name || "Direct Sourced"}</strong></span>
+                                </div>
+                              </div>
+                              <div className="popup-stat" style={{ textAlign: "right", minWidth: "120px" }}>
+                                <span className="popup-stat-val" style={{ color: demand.priority === "HIGH" ? "var(--color-error-dark)" : "var(--color-warning-dark)", fontSize: "13px", fontWeight: "700" }}>
+                                  {daysAging} Days Aging
+                                </span>
+                                <span className={`tag ${demand.priority === "HIGH" ? "tag-red" : "tag-orange"}`} style={{ display: "inline-block", marginTop: "4px", fontSize: "9px" }}>
+                                  {demand.priority === "HIGH" ? "High" : "Medium"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                    )}
+                  </div>
+                )}
+
               </div>
             )}
           </div>

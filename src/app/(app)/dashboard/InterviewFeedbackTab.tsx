@@ -562,7 +562,7 @@ export default function InterviewFeedbackTab() {
                 </div>
               ) : interviews.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "32px", color: "var(--color-text-tertiary)", fontSize: "12px" }}>
-                  No interviews scheduled. Get started by clicking "Schedule Interview".
+                  No interviews scheduled. Get started by clicking &ldquo;Schedule Interview&rdquo;.
                 </div>
               ) : (
                 interviews.map((int: any, idx: number) => {
